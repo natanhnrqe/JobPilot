@@ -1,12 +1,20 @@
-.idea
+# Dependências
+node_modules/
 
-# Default ignored files
-/shelf/
-/workspace.xml
-# Editor-based HTTP Client requests
-/httpRequests/
-# Ignored default folder with query files
-/queries/
-# Datasource local storage ignored files
-/dataSources/
-/dataSources.local.xml
+# Compilados
+dist/
+*.tsbuildinfo
+
+# Dados locais (banco, backups, logs) - NUNCA versionar
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Ambiente / segredos
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/

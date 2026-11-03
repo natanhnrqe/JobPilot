@@ -1,0 +1,31 @@
+{
+  "name": "jobpilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "JobPilot - aplicacao local de busca, gestao e acompanhamento de vagas e candidaturas (Marco 1).",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "engines": {
+    "node": "\u003e=22.5.0"
+  },
+  "devDependencies": {
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
+    "prettier": "^3.9.10",
+    "typescript-eslint": "^8.72.1"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present --parallel",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:migrate": "npm run db:migrate --workspace backend",
+    "backup": "npm run backup --workspace backend",
+    "start": "npm run start --workspace backend",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "type": "module"
+}
