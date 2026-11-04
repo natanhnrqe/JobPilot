@@ -1,4 +1,4 @@
-# Instalação e execução — JobPilot (Marco 1)
+# Instalação e execução — JobPilot
 
 Guia para rodar a aplicação no Windows a partir de um repositório limpo.
 
@@ -43,11 +43,20 @@ O backend passa a servir a interface compilada em **http://127.0.0.1:3000**.
 
 ## 5. Primeiro uso
 
-1. Abra a aplicação e vá em **Vagas → + Nova vaga**.
+1. Abra a aplicação e vá em **Vagas → + Nova vaga** (cadastro manual).
 2. Preencha o título (obrigatório) e os demais campos opcionais.
 3. Use **Iniciar candidatura** na página da vaga para acompanhar o processo.
 4. Mude status pelos botões de transição — o backend recusa qualquer transição inválida (erro 409 explica o motivo).
 5. "Enviada" pede a **data do envio**: é sempre uma declaração sua, nunca automática.
+
+### Cadastro com IA (opcional)
+
+1. Vá em **Vagas → + Cadastrar com IA**.
+2. Cole a descrição da vaga (ou informe a URL) e clique em **Extrair com IA**.
+3. Confira a **prévia editável**: a IA pode deixar campos vazios quando não encontra a informação — nada é inventado e nada é salvo antes de você clicar em **Confirmar e salvar vaga**.
+4. Se aparecer "possível duplicata", abra a vaga indicada e decida você mesmo.
+
+Sem chave de IA configurada a página avisa e o cadastro manual continua disponível. Detalhes em [`docs/IA.md`](IA.md).
 
 ## 6. Configurações
 
@@ -56,7 +65,7 @@ Em **Configurações** é possível ajustar:
 - Nome de exibição no dashboard.
 - Fuso horário (formato IANA, ex.: `America/Sao_Paulo`) — usado apenas para exibir datas; o banco grava tudo em UTC.
 
-Variáveis de ambiente opcionais (copie `.env.example` para `.env`):
+Variáveis de ambiente opcionais (copie `.env.example` para `.env` na raiz; o backend lê esse arquivo e dá precedência ao ambiente real):
 
 | Variável        | Padrão                        | Descrição                                    |
 | --------------- | ----------------------------- | -------------------------------------------- |
@@ -64,6 +73,12 @@ Variáveis de ambiente opcionais (copie `.env.example` para `.env`):
 | `HOST`          | `127.0.0.1`                   | Endereço de escuta (mantenha localhost)      |
 | `DATABASE_PATH` | `<raiz>/data/jobpilot.sqlite` | Caminho do banco                             |
 | `DATA_DIR`      | `<raiz>/data`                 | Pasta de dados (backups e logs ficam dentro) |
+| `AI_API_KEY`    | *(sem chave)*                 | Habilita o cadastro assistido por IA         |
+| `AI_BASE_URL`   | `https://api.openai.com/v1`   | Endpoint compatível com OpenAI               |
+| `AI_MODEL`      | `gpt-4o-mini`                 | Modelo usado na extração                     |
+| `AI_TIMEOUT_MS` | `60000`                       | Tempo máximo por chamada de IA               |
+
+A chave de IA é opcional: sem ela, apenas a extração assistida fica indisponível (o restante funciona). Veja [`docs/IA.md`](IA.md) para custos, testes offline e comportamento em falhas.
 
 ## 7. Migrações
 
@@ -78,7 +93,7 @@ As migrações são arquivos SQL versionados em `backend/migrations/` e são **i
 ## 8. Testes e build
 
 ```powershell
-npm test        # 50 testes (backend); 100% offline, banco temporário por arquivo de teste
+npm test        # 97 testes (backend); 100% offline, banco temporário por arquivo de teste
 npm run build   # compila backend (tsc → backend/dist) e frontend (vite → frontend/dist)
 ```
 

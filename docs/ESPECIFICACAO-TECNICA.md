@@ -423,7 +423,20 @@ CREATE TABLE credentials (
 | GET    | `/sources`     | fontes com `support_state` |
 | PATCH  | `/sources/:id` | habilita/desabilita fonte  |
 
-### 4.6 IA — **Fase 3 (não implementar no Marco 1)**
+### 4.6 IA — extração (Fase 2) e análise (Fase 3)
+
+**Implementado na Fase 2 (cadastro assistido por IA):**
+
+| Método | Rota                   | Descrição                                                                            |
+| ------ | ---------------------- | ------------------------------------------------------------------------------------ |
+| GET    | `/extractions/status`  | `{ enabled, model, provider }` — `enabled=false` quando não há `AI_API_KEY`           |
+| POST   | `/extractions/from-text` | extrai rascunho de texto colado e devolve prévia; **não persiste nada**             |
+| POST   | `/extractions/from-url`  | busca a página com proteções SSRF, converte HTML em texto e extrai; **não persiste** |
+
+- A gravação usa o **mesmo** `POST /jobs` (regras, eventos e validação existentes) e só ocorre após confirmação humana na prévia.
+- Erros novos: `AI_UNAVAILABLE` (503, sem chave/falha de rede/cota), `AI_INVALID_RESPONSE` (502, JSON ou esquema inválidos após 2 tentativas), `FETCH_ERROR` (falha/bloqueio ao obter a URL).
+
+**Ainda Fase 3 (não implementar):**
 
 | Método | Rota                 | Descrição         |
 | ------ | -------------------- | ----------------- |
@@ -890,12 +903,14 @@ Regras:
 
 | Camada             | Arquivo/tabela                        | Conteúdo                                    | Versionado?                    |
 | ------------------ | ------------------------------------- | ------------------------------------------- | ------------------------------ |
-| Ambiente           | `.env` (só `.env.example` versionado) | `PORT`, `HOST`, `DATABASE_PATH`, `DATA_DIR` | não                            |
-| Padrões do app     | `backend/src/config/defaults.ts`      | valores default de tudo                     | sim                            |
+| Ambiente           | `.env` (só `.env.example` versionado) | `PORT`, `HOST`, `DATABASE_PATH`, `DATA_DIR`, `AI_API_KEY`, `AI_BASE_URL`, `AI_MODEL`, `AI_TIMEOUT_MS` | não |
+| Padrões do app     | `backend/src/config/index.ts`        | valores default de tudo (validados com zod)  | sim                            |
 | Ajustes do usuário | tabela `settings`                     | `display_name`, `timezone`                  | fica no banco (não versionado) |
 | Estado operacional | `data/`                               | banco, logs, backups                        | não                            |
 
-- Sem segredos obrigatórios no Marco 1: a aplicação roda **sem `.env`**.
+- Sem segredos obrigatórios: a aplicação roda **sem `.env`** (todos os valores têm default).
+- O backend lê `.env` da raiz do repositório quando `loadConfig()` é chamado sem `env` explícito; **`process.env` tem precedência** sobre o arquivo. Os testes passam `env` explícito e ignoram o `.env` do desenvolvedor de propósito.
+- Único segredo da Fase 2: `AI_API_KEY` (opcional). Sem ela, `config.ai` é `null` e **só** a extração assistida fica indisponível.
 - Validação na carga com zod; config inválida → falha clara no startup indicando a chave.
 - `HOST` tem default `127.0.0.1`: **o servidor não escuta na rede local por padrão**.
 
@@ -958,6 +973,8 @@ Regras (válidas desde o Marco 1):
 | M1.13 | Testes unitários + integração (offline)                                              | `npm test` verde offline em máquina limpa                                                          |
 
 ### Fase 2 — Coleta automática
+
+**Etapa 1 concluída — cadastro assistido por IA:** rotas `/extractions/status|from-text|from-url`, provedor `AiProvider` (compatível OpenAI), prévia editável em `/vagas/nova` com confirmação humana, detecção de duplicatas na prévia, `jobs.posted_at` (migração 002) e proteções de SSRF/URL. CA: extrair de texto → conferir → confirmar → vaga criada com evento; sem chave de IA, o restante segue funcionando.
 
 | #   | Tarefa                                                        | CA                                                                                           |
 | --- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
@@ -1062,6 +1079,12 @@ Dentro de cada fase, ordem: **dados → domínio → API → UI → testes → d
 | R7  | Testes            | Vitest + supertest, banco temporário por teste, 100% offline.                                                                                                                                  |
 | R8  | Logs              | Logger próprio (console + arquivo diário em `data/logs/`), sem dependência externa.                                                                                                            |
 | R9  | Idioma            | UI, mensagens e documentação em **pt-BR**.                                                                                                                                                     |
+| R10 | Provedor de IA (Fase 2) | Provedor único e pequeno, com interface `AiProvider` e implementação **compatível com a API da OpenAI** (`/chat/completions`, saída JSON estruturada). Funciona com OpenAI, OpenRouter, Groq, DeepSeek ou endpoint local (Ollama/vLLM) trocando `AI_BASE_URL`/`AI_MODEL`. Sem arquitetura de plugins: uma abstração basta. |
+| R11 | Confirmação humana | A extração **nunca** grava: devolve prévia e a gravação usa o `POST /jobs` existente só após o usuário confirmar.                                                                            |
+| R12 | `posted_at` (migração 002) | Coluna `jobs.posted_at` (nullable) porque a data de publicação só pode vir da fonte; **nunca** é preenchida com a data atual. Compatível com dados existentes (ficam `NULL`).           |
+| R13 | Conteúdo por URL   | HTTP simples (sem JS, sem Playwright), apenas `http/https`, validação de destino **antes** de cada salto de redirecionamento, limite de 5 saltos, 15 s, 2 MB e tipos `html/xhtml/plain`. Proteção de SSRF bloqueia loopback, privados, link-local, CGNAT e metadata. |
+| R14 | Conteúdo não confiável | Texto da vaga vai ao modelo sempre entre delimitadores, com instrução explícita de ignorar comandos ali contidos (anti prompt injection); a IA não define id, status nem campos de controle. |
+| R15 | Deduplicação na Fase 2 | Detecção **informativa** na prévia: URL normalizada (forte) + empresa+título normalizados (apenas indício). Nunca descarta sozinha — o usuário decide. `dedupe_key`/`ON CONFLICT` da Seção 6.2 ficam para a coleta em massa. |
 
 ### 14.2 Ainda dependem do usuário (blocos das fases futuras)
 
@@ -1082,4 +1105,4 @@ Dentro de cada fase, ordem: **dados → domínio → API → UI → testes → d
 
 ---
 
-_Especificação de projeto. O Marco 1 é implementado neste repositório; as Seções 4.4–4.7, 6, 7, 8 e 9 e as Fases 2–5 descrevem trabalho futuro e não devem ser antecipados._
+_Especificação de projeto. O Marco 1 e a primeira etapa da Fase 2 (cadastro assistido por IA: Seções 4.6, 6.2 parcial, 10.3) estão implementados neste repositório; as demais partes das Seções 4.4–4.7, 6, 7, 8 e 9 e as Fases 2–5 descrevem trabalho futuro e não devem ser antecipados._
