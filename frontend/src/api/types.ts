@@ -16,6 +16,8 @@ export interface Job {
   salaryText: string | null;
   descriptionText: string | null;
   sourceUrl: string | null;
+  /** Data de publicação informada pela fonte (null quando não disponível). */
+  postedAt: string | null;
   discoveredAt: string;
   status: JobStatus;
   statusChangedAt: string;
@@ -115,6 +117,50 @@ export interface Paged<T> {
   total: number;
   page: number;
   pageSize: number;
+}
+
+/** GET /extractions/status — se a IA está configurada no backend. */
+export interface ExtractionStatus {
+  enabled: boolean;
+  model: string | null;
+  provider: string | null;
+}
+
+/** Rascunho devolvido pela extração: campos não identificados vêm null. */
+export interface JobDraft {
+  title: string | null;
+  company: string | null;
+  location: string | null;
+  workMode: "remote" | "hybrid" | "onsite" | null;
+  contractType: "internship" | "junior" | "mid" | "senior" | "freelance" | null;
+  salaryText: string | null;
+  postedAt: string | null;
+  sourceUrl: string | null;
+  descriptionText: string | null;
+}
+
+export interface DuplicateCandidate {
+  id: number;
+  title: string;
+  company: string | null;
+  status: string;
+  sourceUrl: string | null;
+  reason: "url" | "empresa+titulo";
+}
+
+/** POST /extractions/from-text | from-url — prévia, NÃO persiste. */
+export interface ExtractionResult {
+  draft: JobDraft;
+  confidence: "high" | "medium" | "low";
+  extractionNotes: string[];
+  warnings: string[];
+  possibleDuplicates: DuplicateCandidate[];
+  meta: {
+    provider: string;
+    model: string;
+    contentSource: "texto" | "url";
+    contentLength: number;
+  };
 }
 
 /** Transições permitidas — espelho das máquinas de estado do backend (validação final é sempre no servidor). */

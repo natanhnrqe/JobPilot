@@ -62,6 +62,7 @@ export default function JobDetail() {
         contractType: form.contractType,
         salaryText: form.salaryText ?? "",
         sourceUrl: form.sourceUrl ?? "",
+        postedAt: form.postedAt || null,
         descriptionText: form.descriptionText ?? "",
       }),
     );
@@ -191,6 +192,15 @@ export default function JobDetail() {
             />
           </label>
           <label>
+            Data de publicação
+            <input
+              type="date"
+              value={form?.postedAt ? form.postedAt.slice(0, 10) : ""}
+              onChange={(e) => setForm({ ...form, postedAt: e.target.value || null })}
+            />
+            <span className="muted small">Deixe vazio se a fonte não informar a data.</span>
+          </label>
+          <label>
             Descrição
             <textarea
               value={form?.descriptionText ?? ""}
@@ -233,6 +243,10 @@ export default function JobDetail() {
             <div>
               <dt>Data de descoberta</dt>
               <dd>{formatDate(job.discoveredAt)}</dd>
+            </div>
+            <div>
+              <dt>Data de publicação</dt>
+              <dd>{job.postedAt ? formatDate(job.postedAt) : "—"}</dd>
             </div>
             <div className="full">
               <dt>URL original</dt>

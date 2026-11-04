@@ -4,6 +4,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./App";
 import Dashboard from "./pages/Dashboard";
 import Jobs from "./pages/Jobs";
+import NewJobAssisted from "./pages/NewJobAssisted";
 import JobDetail from "./pages/JobDetail";
 import Applications from "./pages/Applications";
 import ApplicationDetail from "./pages/ApplicationDetail";
@@ -17,6 +18,7 @@ const router = createBrowserRouter([
     children: [
       { path: "/", element: <Dashboard /> },
       { path: "/vagas", element: <Jobs /> },
+      { path: "/vagas/nova", element: <NewJobAssisted /> },
       { path: "/vagas/:id", element: <JobDetail /> },
       { path: "/candidaturas", element: <Applications /> },
       { path: "/candidaturas/:id", element: <ApplicationDetail /> },

@@ -69,9 +69,14 @@ export default function Jobs() {
     <div>
       <div className="page-head">
         <h1>Vagas</h1>
-        <button onClick={() => setShowForm((v) => !v)}>
-          {showForm ? "Fechar formulário" : "+ Nova vaga"}
-        </button>
+        <div className="row-actions">
+          <Link className="button-link" to="/vagas/nova">
+            + Cadastrar com IA
+          </Link>
+          <button onClick={() => setShowForm((v) => !v)}>
+            {showForm ? "Fechar formulário" : "+ Nova vaga"}
+          </button>
+        </div>
       </div>
 
       {showForm && (
