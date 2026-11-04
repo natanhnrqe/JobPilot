@@ -58,6 +58,10 @@ Regras de segurança:
 1. **Suíte automatizada (padrão, offline):** `npm test` usa um provedor falso
    (`backend/tests/fakeAi.ts`) — zero rede, zero chave. Cobre extração válida, campos ausentes,
    JSON inválido, esquema inválido, provedor indisponível, duplicatas, SSRF e HTML.
+   Além do provedor falso, `backend/tests/integration/aiProvider.test.ts` exercita o **provedor
+   real** contra um servidor local que emula a API da OpenAI: formato da requisição, 401/403, 429,
+   5xx, timeout, conexão recusada e o fluxo completo (texto → extração real → prévia → confirmação →
+   lista) — tudo por loopback, sem chave e sem rede externa.
 2. **API local de mentira (smoke test manual):** suba um servidor que responda
    `/v1/chat/completions` com o JSON que quiser e aponte o JobPilot para ele:
 

@@ -33,7 +33,7 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 - ✅ Falha de uma fonte **não derruba as demais** (`status='partial'`) e o resumo fica em `data/last-run.json`
 - ✅ **Agendamento diário às 18:00** no Windows via `scripts/install-task.ps1` (o PC precisa estar ligado)
 
-✅ **139 testes automatizados** (domínio, API, extração, SSRF, duplicatas, config, backup/restore, conector, coleta e lock) — 100% offline, sem chave de IA e sem rede externa.
+✅ **148 testes automatizados** (domínio, API, extração, provedor real de IA por loopback, SSRF, duplicatas, config, backup/restore, conector, coleta e lock) — 100% offline, sem chave de IA e sem rede externa.
 
 **Não implementado** (por design, por enquanto): página de Execuções no dashboard, análise de compatibilidade com currículo, Playwright/automação de envio, upload de currículo e lembretes.
 
