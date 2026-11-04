@@ -1,4 +1,5 @@
 import { z } from "zod";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -39,14 +40,57 @@ export interface AppConfig {
 }
 
 /**
+ * Lê um arquivo `.env` simples (KEY=VALUE, `#` para comentários, aspas
+ * opcionais) sem dependências externas. Variáveis já presentes no ambiente
+ * têm precedência sobre o arquivo.
+ */
+function readDotEnv(filePath: string): Record<string, string> {
+  try {
+    if (!fs.existsSync(filePath)) return {};
+    const values: Record<string, string> = {};
+    for (const line of fs.readFileSync(filePath, "utf8").split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (trimmed === "" || trimmed.startsWith("#")) continue;
+      const eq = trimmed.indexOf("=");
+      if (eq <= 0) continue;
+      const key = trimmed.slice(0, eq).trim();
+      let value = trimmed.slice(eq + 1).trim();
+      const quoted =
+        value.length >= 2 &&
+        ((value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'")));
+      if (quoted) value = value.slice(1, -1);
+      values[key] = value;
+    }
+    return values;
+  } catch {
+    return {};
+  }
+}
+
+/**
  * Carrega e valida a configuração. A aplicação funciona sem `.env`
  * (todos os valores têm padrão; ver docs/ESPECIFICACAO-TECNICA.md §10.3).
+ *
+ * Quando nenhum `env` é informado (processo real), o arquivo `.env` da raiz
+ * do repositório é lido; `process.env` tem precedência sobre ele. Os testes
+ * passam `env` explícito e, de propósito, ignoram o `.env` do desenvolvedor.
  */
 export function loadConfig(
-  env: Record<string, string | undefined> = process.env,
+  env?: Record<string, string | undefined>,
   opts: { backendDir?: string } = {},
 ): AppConfig {
-  const parsed = EnvSchema.safeParse(env);
+  // src/config/index.ts → backend/src → backend
+  const backendDir =
+    opts.backendDir ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+  const rootDir = path.resolve(backendDir, "..");
+
+  const source: Record<string, string | undefined> = env ?? {
+    ...readDotEnv(path.join(rootDir, ".env")),
+    ...process.env,
+  };
+
+  const parsed = EnvSchema.safeParse(source);
   if (!parsed.success) {
     const issues = parsed.error.issues
       .map((i) => `${i.path.join(".") || "env"}: ${i.message}`)
@@ -54,11 +98,6 @@ export function loadConfig(
     throw new Error(`Configuração inválida (${issues}). Verifique o arquivo .env.`);
   }
   const e = parsed.data;
-
-  // src/config/index.ts → backend/src → backend
-  const backendDir =
-    opts.backendDir ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-  const rootDir = path.resolve(backendDir, "..");
 
   const dataDir = e.DATA_DIR ? path.resolve(e.DATA_DIR) : path.join(rootDir, "data");
   const databasePath = e.DATABASE_PATH
