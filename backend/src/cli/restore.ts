@@ -22,7 +22,7 @@ const logger = createLogger({ logDir: config.logsDir });
 const holder = new DbHolder(config, logger);
 
 try {
-  const result = restoreBackup({ config, holder }, { fileName, confirm: true });
+  const result = restoreBackup({ config, holder, ai: null }, { fileName, confirm: true });
   console.log("Banco restaurado com sucesso.");
   console.log(`  Backup prévio automático: ${result.preRestoreBackup}`);
   console.log(

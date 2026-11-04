@@ -3,6 +3,10 @@ export type ErrorCode =
   | "NOT_FOUND"
   | "CONFLICT"
   | "INVALID_TRANSITION"
+  | "AI_UNAVAILABLE"
+  | "AI_ERROR"
+  | "AI_INVALID_RESPONSE"
+  | "FETCH_ERROR"
   | "BACKUP_ERROR"
   | "RESTORE_ERROR"
   | "INTERNAL_ERROR";

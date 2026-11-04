@@ -59,6 +59,8 @@ export const createJobSchema = z.object({
   salaryText: optionalText(200),
   descriptionText: optionalText(20000),
   sourceUrl: optionalUrl,
+  /** Data de publicação informada pela fonte (nunca a data atual — ver migração 002). */
+  postedAt: optionalIsoDate.nullable(),
   discoveredAt: optionalIsoDate,
 });
 

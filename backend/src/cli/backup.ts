@@ -8,7 +8,7 @@ const logger = createLogger({ logDir: config.logsDir });
 const holder = new DbHolder(config, logger);
 
 try {
-  const backup = createBackup({ config, holder }, "manual");
+  const backup = createBackup({ config, holder, ai: null }, "manual");
   console.log(
     `Backup criado: ${config.backupsDir}\\${backup.fileName} (${backup.sizeBytes} bytes)`,
   );

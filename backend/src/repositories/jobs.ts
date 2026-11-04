@@ -11,6 +11,8 @@ export interface JobRow {
   salary_text: string | null;
   description_text: string | null;
   source_url: string | null;
+  /** Data de publicação informada pela fonte (nunca inferida — ver migração 002). */
+  posted_at: string | null;
   discovered_at: string;
   status: string;
   status_changed_at: string;
@@ -28,6 +30,7 @@ export interface JobInsert {
   salaryText?: string | null;
   descriptionText?: string | null;
   sourceUrl?: string | null;
+  postedAt?: string | null;
   discoveredAt?: string | null;
   status: JobStatus;
   statusChangedAt: string;
@@ -37,9 +40,9 @@ export function insertJob(db: Db, data: JobInsert): number {
   const now = new Date().toISOString();
   const result = db.run(
     `INSERT INTO jobs (title, company, location, work_mode, contract_type, salary_text,
-                       description_text, source_url, discovered_at, status, status_changed_at,
-                       created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                       description_text, source_url, posted_at, discovered_at, status,
+                       status_changed_at, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.title,
       data.company ?? null,
@@ -49,6 +52,7 @@ export function insertJob(db: Db, data: JobInsert): number {
       data.salaryText ?? null,
       data.descriptionText ?? null,
       data.sourceUrl ?? null,
+      data.postedAt ?? null,
       data.discoveredAt ?? now,
       data.status,
       data.statusChangedAt,
@@ -75,6 +79,7 @@ export interface JobUpdate {
   salaryText?: string | null;
   descriptionText?: string | null;
   sourceUrl?: string | null;
+  postedAt?: string | null;
   discoveredAt?: string;
   status?: JobStatus;
   statusChangedAt?: string;
@@ -93,6 +98,7 @@ export function updateJobRow(db: Db, id: number, patch: JobUpdate): void {
     ["salaryText", "salary_text"],
     ["descriptionText", "description_text"],
     ["sourceUrl", "source_url"],
+    ["postedAt", "posted_at"],
     ["discoveredAt", "discovered_at"],
     ["status", "status"],
     ["statusChangedAt", "status_changed_at"],

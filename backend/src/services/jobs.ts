@@ -33,6 +33,7 @@ export interface JobDto {
   salaryText: string | null;
   descriptionText: string | null;
   sourceUrl: string | null;
+  postedAt: string | null;
   discoveredAt: string;
   status: JobStatus;
   statusChangedAt: string;
@@ -78,6 +79,7 @@ export function toJobDto(row: JobRow): JobDto {
     salaryText: row.salary_text,
     descriptionText: row.description_text,
     sourceUrl: row.source_url,
+    postedAt: row.posted_at,
     discoveredAt: row.discovered_at,
     status: row.status as JobStatus,
     statusChangedAt: row.status_changed_at,
@@ -135,6 +137,7 @@ export function createJob(
     salaryText?: string | null;
     descriptionText?: string | null;
     sourceUrl?: string | null;
+    postedAt?: string | null;
     discoveredAt?: string;
   },
 ): JobDto {
@@ -164,6 +167,7 @@ export function updateJob(
     salaryText: string | null;
     descriptionText: string | null;
     sourceUrl: string | null;
+    postedAt: string | null;
     discoveredAt: string;
     status: JobStatus;
   }>,

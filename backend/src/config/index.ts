@@ -8,7 +8,19 @@ const EnvSchema = z.object({
   DATABASE_PATH: z.string().optional(),
   DATA_DIR: z.string().optional(),
   NODE_ENV: z.string().optional(),
+  // Integração com IA (opcional — sem chave, o restante funciona normalmente).
+  AI_API_KEY: z.string().optional(),
+  AI_BASE_URL: z.string().default("https://api.openai.com/v1"),
+  AI_MODEL: z.string().default("gpt-4o-mini"),
+  AI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(300000).default(60000),
 });
+
+export interface AiConfig {
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  timeoutMs: number;
+}
 
 export interface AppConfig {
   port: number;
@@ -22,6 +34,8 @@ export interface AppConfig {
   backupsDir: string;
   logsDir: string;
   isProd: boolean;
+  /** Presente somente quando AI_API_KEY está configurada. */
+  ai: AiConfig | null;
 }
 
 /**
@@ -61,5 +75,13 @@ export function loadConfig(
     backupsDir: path.join(dataDir, "backups"),
     logsDir: path.join(dataDir, "logs"),
     isProd: e.NODE_ENV === "production",
+    ai: e.AI_API_KEY
+      ? {
+          apiKey: e.AI_API_KEY,
+          baseUrl: e.AI_BASE_URL,
+          model: e.AI_MODEL,
+          timeoutMs: e.AI_TIMEOUT_MS,
+        }
+      : null,
   };
 }

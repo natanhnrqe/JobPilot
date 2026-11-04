@@ -4,10 +4,12 @@ import path from "node:path";
 import type { AppConfig } from "../config/index.js";
 import { DbHolder } from "../db/holder.js";
 import type { Logger } from "../logging/logger.js";
+import { createAiProvider, type AiProvider } from "../ai/provider.js";
 import { errorEnvelope, requestLogger } from "./middleware/http.js";
 import { jobsRouter, activityRouter } from "./routes/jobs.js";
 import { applicationsRouter, notesRouter } from "./routes/applications.js";
 import { dashboardRouter } from "./routes/dashboard.js";
+import { extractionsRouter } from "./routes/extractions.js";
 import { systemRouter } from "./routes/system.js";
 import type { ServiceContext } from "../services/context.js";
 
@@ -19,16 +21,22 @@ export interface AppServer {
 }
 
 /**
- * Fábrica do servidor. Testes criam instâncias com banco em diretório temporário;
- * o processo real usa loadConfig() + createLogger().
+ * Fábrica do servidor. Testes criam instâncias com banco em diretório temporário
+ * e podem injetar um provedor de IA falso (offline); o processo real usa
+ * loadConfig() + createLogger() e cria o provedor real quando há AI_API_KEY.
  */
-export function createServer(config: AppConfig, logger: Logger): AppServer {
+export function createServer(
+  config: AppConfig,
+  logger: Logger,
+  opts: { aiProvider?: AiProvider } = {},
+): AppServer {
   fs.mkdirSync(config.dataDir, { recursive: true });
   fs.mkdirSync(config.backupsDir, { recursive: true });
   fs.mkdirSync(config.logsDir, { recursive: true });
 
   const holder = new DbHolder(config, logger);
-  const ctx: ServiceContext = { config, holder };
+  const ai = opts.aiProvider ?? (config.ai ? createAiProvider(config.ai) : null);
+  const ctx: ServiceContext = { config, holder, ai };
 
   const app = express();
   app.disable("x-powered-by");
@@ -42,6 +50,7 @@ export function createServer(config: AppConfig, logger: Logger): AppServer {
   api.use("/applications", applicationsRouter(ctx));
   api.use("/notes", notesRouter(ctx));
   api.use("/activity", activityRouter(ctx));
+  api.use("/extractions", extractionsRouter(ctx));
   api.use("/", systemRouter(ctx));
   app.use("/api/v1", api);
 
