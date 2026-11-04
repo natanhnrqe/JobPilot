@@ -23,7 +23,7 @@ import net from "node:net";
 const MAX_REDIRECTS = 5;
 const DEFAULT_TIMEOUT_MS = 15000;
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
-const ALLOWED_CONTENT_TYPES = ["text/html", "application/xhtml+xml", "text/plain"];
+const DEFAULT_ALLOWED_CONTENT_TYPES = ["text/html", "application/xhtml+xml", "text/plain"];
 
 export interface FetchedPage {
   content: string;
@@ -41,6 +41,10 @@ export interface SafeFetchOptions {
    * metadata continuam BLOQUEADOS mesmo com esta opção. NUNCA usar em produção.
    */
   allowLoopbackForTests?: boolean;
+  /** Tipos de conteúdo aceitos na resposta final (padrão: HTML/texto). */
+  allowedContentTypes?: string[];
+  /** User-Agent enviado (padrão identificável; veja Seção 6.4 da especificação). */
+  userAgent?: string;
 }
 
 function isPrivateIp(ip: string): boolean {
@@ -121,13 +125,18 @@ function blocked(target: string): AppError {
   );
 }
 
-/** Faz a requisição com validação de cada salto de redirecionamento. */
-export async function fetchJobPage(
+/**
+ * Faz a requisição com validação de cada salto de redirecionamento.
+ * Base comum para páginas de vaga (HTML) e para APIs das fontes (JSON).
+ */
+export async function fetchPublicResource(
   rawUrl: string,
   options: SafeFetchOptions = {},
 ): Promise<FetchedPage> {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxBytes = options.maxBytes ?? MAX_BYTES;
+  const allowedContentTypes = options.allowedContentTypes ?? DEFAULT_ALLOWED_CONTENT_TYPES;
+  const userAgent = options.userAgent ?? "JobPilot/0.1 (local; contato: usuario-local)";
 
   let currentUrl: URL;
   try {
@@ -150,9 +159,8 @@ export async function fetchJobPage(
       redirect: "manual",
       signal: AbortSignal.timeout(timeoutMs),
       headers: {
-        // User-Agent identificável (Seção 6.4 da especificação).
-        "User-Agent": "JobPilot/0.1 (local; contato: usuario-local)",
-        Accept: "text/html, application/xhtml+xml, text/plain;q=0.9, */*;q=0.5",
+        "User-Agent": userAgent,
+        Accept: `${allowedContentTypes.join(", ")}, */*;q=0.5`,
       },
     }).catch((err: unknown) => {
       const isTimeout = err instanceof Error && err.name === "TimeoutError";
@@ -187,16 +195,16 @@ export async function fetchJobPage(
       throw new AppError(
         "FETCH_ERROR",
         422,
-        `A página bloqueou o acesso automático (HTTP ${response.status}). Abra a vaga no navegador e cole a descrição manualmente.`,
+        `Acesso automático bloqueado pelo destino (HTTP ${response.status}). Se for uma vaga, abra no navegador e cole a descrição manualmente.`,
       );
     }
     if (!response.ok) {
-      throw new AppError("FETCH_ERROR", 502, `A página respondeu HTTP ${response.status}.`);
+      throw new AppError("FETCH_ERROR", 502, `O destino respondeu HTTP ${response.status}.`);
     }
 
     const contentType =
       (response.headers.get("content-type") ?? "").split(";")[0]?.trim().toLowerCase() ?? "";
-    if (!ALLOWED_CONTENT_TYPES.includes(contentType)) {
+    if (!allowedContentTypes.includes(contentType)) {
       throw new AppError(
         "FETCH_ERROR",
         415,
@@ -221,4 +229,9 @@ export async function fetchJobPage(
   }
 
   throw new AppError("FETCH_ERROR", 508, `Mais de ${MAX_REDIRECTS} redirecionamentos.`);
+}
+
+/** Obtenção de página de vaga (HTML/texto). Mantém o nome usado pelos serviços. */
+export function fetchJobPage(rawUrl: string, options: SafeFetchOptions = {}): Promise<FetchedPage> {
+  return fetchPublicResource(rawUrl, options);
 }

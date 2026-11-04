@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { AppError } from "../../src/domain/errors.js";
-import { fetchJobPage, ipIsBlocked } from "../../src/fetch/safeFetch.js";
+import { fetchJobPage, fetchPublicResource, ipIsBlocked } from "../../src/fetch/safeFetch.js";
 
 /** Servidor local de teste (loopback liberado SOMENTE via allowLoopbackForTests). */
 let server: http.Server;
@@ -26,6 +26,11 @@ beforeAll(async () => {
     if (url === "/redirect-loop") {
       res.writeHead(302, { Location: "/redirect-loop" });
       res.end();
+      return;
+    }
+    if (url === "/json") {
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ jobs: [{ id: 1 }] }));
       return;
     }
     if (url === "/pdf") {
@@ -178,8 +183,8 @@ describe("fetchJobPage — requisições (servidor local de teste)", () => {
     );
   });
 
-  it("trata bloqueio 403 como proteção da página (orienta colar o texto)", async () => {
-    await expectAppError(fetchJobPage(`${baseUrl}/403`, loopback), 422, /bloqueou o acesso/);
+  it("trata bloqueio 403 como proteção do destino (orienta colar o texto)", async () => {
+    await expectAppError(fetchJobPage(`${baseUrl}/403`, loopback), 422, /bloqueado pelo destino/);
   });
 
   it("trata HTTP 404 como erro do servidor", async () => {
@@ -193,4 +198,31 @@ describe("fetchJobPage — requisições (servidor local de teste)", () => {
       /300 ms/,
     );
   }, 10000);
+});
+
+describe("fetchPublicResource — conteúdo por tipo (APIs das fontes)", () => {
+  it("aceita JSON quando o tipo é permitido", async () => {
+    const page = await fetchPublicResource(`${baseUrl}/json`, {
+      ...loopback,
+      allowedContentTypes: ["application/json"],
+    });
+    expect(page.contentType).toBe("application/json");
+    expect(JSON.parse(page.content).jobs).toHaveLength(1);
+  });
+
+  it("rejeita HTML quando só JSON é permitido (e vice-versa)", async () => {
+    await expectAppError(
+      fetchPublicResource(`${baseUrl}/vaga`, {
+        ...loopback,
+        allowedContentTypes: ["application/json"],
+      }),
+      415,
+      /conteúdo não suportado/i,
+    );
+    await expectAppError(
+      fetchPublicResource(`${baseUrl}/json`, { ...loopback, allowedContentTypes: ["text/html"] }),
+      415,
+      /conteúdo não suportado/i,
+    );
+  });
 });
