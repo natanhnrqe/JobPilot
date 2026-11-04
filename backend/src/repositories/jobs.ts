@@ -13,6 +13,10 @@ export interface JobRow {
   source_url: string | null;
   /** Data de publicação informada pela fonte (nunca inferida — ver migração 002). */
   posted_at: string | null;
+  /** Fonte de onde veio (null = cadastro manual/assistido — migração 003). */
+  source_id: number | null;
+  /** Identificador estável na fonte, quando a fonte fornece um. */
+  external_id: string | null;
   discovered_at: string;
   status: string;
   status_changed_at: string;
@@ -31,6 +35,8 @@ export interface JobInsert {
   descriptionText?: string | null;
   sourceUrl?: string | null;
   postedAt?: string | null;
+  sourceId?: number | null;
+  externalId?: string | null;
   discoveredAt?: string | null;
   status: JobStatus;
   statusChangedAt: string;
@@ -40,9 +46,9 @@ export function insertJob(db: Db, data: JobInsert): number {
   const now = new Date().toISOString();
   const result = db.run(
     `INSERT INTO jobs (title, company, location, work_mode, contract_type, salary_text,
-                       description_text, source_url, posted_at, discovered_at, status,
-                       status_changed_at, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                       description_text, source_url, posted_at, source_id, external_id,
+                       discovered_at, status, status_changed_at, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.title,
       data.company ?? null,
@@ -53,6 +59,8 @@ export function insertJob(db: Db, data: JobInsert): number {
       data.descriptionText ?? null,
       data.sourceUrl ?? null,
       data.postedAt ?? null,
+      data.sourceId ?? null,
+      data.externalId ?? null,
       data.discoveredAt ?? now,
       data.status,
       data.statusChangedAt,
@@ -61,6 +69,19 @@ export function insertJob(db: Db, data: JobInsert): number {
     ],
   );
   return Number(result.lastInsertRowid);
+}
+
+/** Vaga ativa de uma fonte com aquele identificador externo (dedupe prioritário). */
+export function findJobByExternalId(
+  db: Db,
+  sourceId: number,
+  externalId: string,
+): JobRow | undefined {
+  return db.get<JobRow>(
+    `SELECT * FROM jobs
+      WHERE source_id = ? AND external_id = ? AND deleted_at IS NULL`,
+    [sourceId, externalId],
+  );
 }
 
 export function getJobRow(db: Db, id: number, includeDeleted = false): JobRow | undefined {

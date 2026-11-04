@@ -34,6 +34,9 @@ export interface JobDto {
   descriptionText: string | null;
   sourceUrl: string | null;
   postedAt: string | null;
+  /** Fonte de origem (null = cadastro manual ou assistido). */
+  sourceId: number | null;
+  externalId: string | null;
   discoveredAt: string;
   status: JobStatus;
   statusChangedAt: string;
@@ -80,6 +83,8 @@ export function toJobDto(row: JobRow): JobDto {
     descriptionText: row.description_text,
     sourceUrl: row.source_url,
     postedAt: row.posted_at,
+    sourceId: row.source_id,
+    externalId: row.external_id,
     discoveredAt: row.discovered_at,
     status: row.status as JobStatus,
     statusChangedAt: row.status_changed_at,
@@ -138,6 +143,8 @@ export function createJob(
     descriptionText?: string | null;
     sourceUrl?: string | null;
     postedAt?: string | null;
+    sourceId?: number | null;
+    externalId?: string | null;
     discoveredAt?: string;
   },
 ): JobDto {

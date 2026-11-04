@@ -18,6 +18,10 @@ export interface Job {
   sourceUrl: string | null;
   /** Data de publicação informada pela fonte (null quando não disponível). */
   postedAt: string | null;
+  /** Fonte de onde a vaga veio (null = cadastro manual ou assistido). */
+  sourceId: number | null;
+  /** Identificador estável na fonte, quando a fonte fornece um. */
+  externalId: string | null;
   discoveredAt: string;
   status: JobStatus;
   statusChangedAt: string;
