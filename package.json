@@ -22,6 +22,7 @@
     "test": "npm run test --workspaces --if-present",
     "db:migrate": "npm run db:migrate --workspace backend",
     "backup": "npm run backup --workspace backend",
+    "collect": "npm run collect --workspace backend",
     "start": "npm run start --workspace backend",
     "lint": "eslint .",
     "format": "prettier --write .",

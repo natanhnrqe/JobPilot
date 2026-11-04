@@ -25,9 +25,16 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 - ✅ Campos não identificados ficam **vazios**; a data atual nunca vira data de publicação
 - ✅ Sem chave de IA, o restante do JobPilot segue funcionando normalmente
 
-✅ **97 testes automatizados** (domínio, API, extração, SSRF, duplicatas, config, backup/restore) — 100% offline, sem chave de IA e sem rede externa.
+**Fase 2 — coleta de vagas**
 
-**Não implementado** (por design, por enquanto): coleta automática de fontes, agendamento, análise de compatibilidade com currículo, Playwright/automação de envio, upload de currículo e lembretes.
+- ✅ **Conector Remotive** verificado na prática (API pública) e registrado em [`docs/FONTES.md`](docs/FONTES.md)
+- ✅ **CLI de coleta** (`npm run collect`): busca as fontes, grava pelo mesmo caminho do cadastro manual, deduplica e registra a execução em `search_runs` + `execution_logs`
+- ✅ **Lock de execução** (`data/.lock`): duas execuções simultâneas → a segunda fica `skipped`, sem corromper dados
+- ✅ Falha de uma fonte **não derruba as demais** (`status='partial'`) e o resumo fica em `data/last-run.json`
+
+✅ **139 testes automatizados** (domínio, API, extração, SSRF, duplicatas, config, backup/restore, conector, coleta e lock) — 100% offline, sem chave de IA e sem rede externa.
+
+**Não implementado** (por design, por enquanto): agendamento no Windows, página de Execuções, análise de compatibilidade com currículo, Playwright/automação de envio, upload de currículo e lembretes.
 
 ## Requisitos
 
@@ -79,6 +86,22 @@ A migração roda automaticamente na primeira execução do servidor. Para rodar
 ```powershell
 npm run db:migrate
 ```
+
+## Coleta de vagas (CLI)
+
+Busca as fontes verificadas (hoje: Remotive) e grava as vagas novas:
+
+```powershell
+npm run collect
+```
+
+- Roda **sem** o servidor da API (acessa o SQLite diretamente).
+- Cada execução é registrada em `search_runs` e `execution_logs`; o resumo também fica em `data/last-run.json`.
+- Duas execuções simultâneas não se atropelam: a segunda é registrada como `skipped` (lock em `data/.lock`).
+- Código de saída: `0` para sucesso/parcial, `1` para falha total.
+- O agendamento automático (Windows, 18:00) é a próxima etapa; por enquanto rode o comando manualmente.
+
+Fontes, campos, limites e condições de uso: [`docs/FONTES.md`](docs/FONTES.md).
 
 ## Backup e restauração
 

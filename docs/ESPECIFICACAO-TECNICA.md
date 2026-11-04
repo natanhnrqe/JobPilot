@@ -976,6 +976,8 @@ Regras (válidas desde o Marco 1):
 
 **Etapa 1 concluída — cadastro assistido por IA:** rotas `/extractions/status|from-text|from-url`, provedor `AiProvider` (compatível OpenAI), prévia editável em `/vagas/nova` com confirmação humana, detecção de duplicatas na prévia, `jobs.posted_at` (migração 002) e proteções de SSRF/URL. CA: extrair de texto → conferir → confirmar → vaga criada com evento; sem chave de IA, o restante segue funcionando.
 
+**Etapa 2 concluída — coleta via CLI:** conector Remotive verificado (2.1), `npm run collect` com normalização + dedupe (2.2), isolamento de falha por fonte (2.3), lock de arquivo com execução `skipped` (2.4, sem missed-run ainda) e registro em `docs/FONTES.md` (2.7). CA: reexecutar → `new_count=0`; fonte quebrada → `partial` e as demais gravam; duas execuções simultâneas → uma `skipped`. Falta o agendamento do Windows (2.5), a página de Execuções (2.6) e a verificação de missed-run.
+
 | #   | Tarefa                                                        | CA                                                                                           |
 | --- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | 2.1 | Interface `SourceConnector` + 2 conectores de API verificados | `verify()` ok; execução real grava vagas com `source_url`                                    |
@@ -1085,6 +1087,7 @@ Dentro de cada fase, ordem: **dados → domínio → API → UI → testes → d
 | R13 | Conteúdo por URL   | HTTP simples (sem JS, sem Playwright), apenas `http/https`, validação de destino **antes** de cada salto de redirecionamento, limite de 5 saltos, 15 s, 2 MB e tipos `html/xhtml/plain`. Proteção de SSRF bloqueia loopback, privados, link-local, CGNAT e metadata. |
 | R14 | Conteúdo não confiável | Texto da vaga vai ao modelo sempre entre delimitadores, com instrução explícita de ignorar comandos ali contidos (anti prompt injection); a IA não define id, status nem campos de controle. |
 | R15 | Deduplicação na Fase 2 | Detecção **informativa** na prévia: URL normalizada (forte) + empresa+título normalizados (apenas indício). Nunca descarta sozinha — o usuário decide. `dedupe_key`/`ON CONFLICT` da Seção 6.2 ficam para a coleta em massa. |
+| R16 | Coleta em massa (Fase 2) | Dedupe sem coluna `dedupe_key`: `source+external_id` → URL normalizada → empresa+título+localização. Localização ausente em um dos lados usa o fallback empresa+título; localizações **diferentes** não bloqueiam. A vaga existente nunca é alterada (`updated_count=0`): status, candidaturas e notas ficam intactos. Lock `data/.lock` (PID vivo + idade < 12 h) e falha parcial por fonte (`status='partial'`). |
 
 ### 14.2 Ainda dependem do usuário (blocos das fases futuras)
 

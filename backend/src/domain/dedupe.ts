@@ -25,7 +25,8 @@ export function normalizeUrl(rawUrl: string): string | null {
   }
 }
 
-function normalizeText(value: string): string {
+/** Normaliza texto só para comparação (sem acentos, pontuação ou caixa). */
+export function normalizeText(value: string): string {
   return value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
