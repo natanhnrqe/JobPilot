@@ -109,9 +109,24 @@ npm run collect
 - Registra a execução em `search_runs` + `execution_logs` e grava o resumo em `data/last-run.json`.
 - Duas execuções simultâneas: a segunda é marcada como `skipped` (lock em `data/.lock`).
 - Saída: `0` = sucesso/parcial; `1` = falha total.
-- O agendamento automático às 18:00 será configurado na próxima etapa (o PC precisa estar ligado e com rede).
+- Veja a Seção 10 para rodar automaticamente todos os dias às 18:00 (o PC precisa estar ligado e com rede).
 
-## 10. Parar e limpar
+## 10. Agendamento no Windows (18:00)
+
+Depois de `npm run build`, instale a tarefa diária (não exige administrador):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/install-task.ps1
+```
+
+- A tarefa roda no contexto do usuário atual — **o PC precisa estar ligado e o usuário logado** no horário.
+- Se o PC estiver desligado às 18:00, a tarefa roda na próxima vez que ele estiver disponível (`StartWhenAvailable`); sem rede, é adiada (`RunOnlyIfNetworkAvailable`).
+- Limite de 2 h por execução e `MultipleInstances=IgnoreNew`; o lock `data/.lock` reforça que nunca há duas coletas ao mesmo tempo.
+- Outro horário: `-At "19:30"`. Remover: `-Uninstall`.
+- Conferir: `Get-ScheduledTask -TaskName "JobPilot Coleta" | Get-ScheduledTaskInfo`.
+- Resultados: `search_runs`/`execution_logs`, `data/last-run.json` e `data/logs/`.
+
+## 11. Parar e limpar
 
 - `Ctrl+C` encerra o processo.
 - Para zerar os dados: feche a aplicação e apague a pasta `data/` (**cuidado**: apaga também os backups locais — copie-os antes).
