@@ -34,6 +34,33 @@ export const CONTRACT_TYPE_LABELS: Record<ContractType, string> = {
   unknown: "Não informado",
 };
 
+export const EXECUTION_STATUS_LABELS: Record<string, string> = {
+  running: "Em execução",
+  success: "Sucesso",
+  partial: "Parcial",
+  failed: "Falha",
+  skipped: "Pulada",
+};
+
+export const EXECUTION_TRIGGER_LABELS: Record<string, string> = {
+  manual: "Manual",
+  scheduled: "Agendada",
+};
+
+export const LOG_LEVEL_LABELS: Record<string, string> = {
+  debug: "Debug",
+  info: "Info",
+  warn: "Aviso",
+  error: "Erro",
+};
+
+export const SOURCE_SUPPORT_LABELS: Record<string, string> = {
+  verified: "Verificada",
+  unverified: "Não verificada",
+  broken: "Quebrada",
+  blocked: "Bloqueada",
+};
+
 export const EVENT_TYPE_LABELS: Record<string, string> = {
   "job.created": "Vaga cadastrada",
   "job.status_changed": "Status da vaga alterado",

@@ -593,3 +593,53 @@ code {
   padding: 1px 5px;
   font-size: 12px;
 }
+
+/* Execu��es de coleta */
+.badge-run-running {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.badge-run-success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge-run-partial {
+  background: var(--warn-bg);
+  color: #92400e;
+}
+
+.badge-run-failed {
+  background: var(--error-bg);
+  color: #991b1b;
+}
+
+.badge-run-skipped {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.badge-log-debug {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.badge-log-info {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.badge-log-warn {
+  background: var(--warn-bg);
+  color: #92400e;
+}
+
+.badge-log-error {
+  background: var(--error-bg);
+  color: #991b1b;
+}
+
+.row-selected td {
+  background: #eef2ff;
+}

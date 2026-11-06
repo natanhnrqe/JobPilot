@@ -167,6 +167,72 @@ export interface ExtractionResult {
   };
 }
 
+/** GET /runs — uma execução de coleta (search_runs). */
+export interface ExecutionRun {
+  id: number;
+  trigger: string;
+  status: string;
+  startedAt: string;
+  finishedAt: string | null;
+  durationMs: number | null;
+  discoveredCount: number;
+  newCount: number;
+  updatedCount: number;
+  duplicateCount: number;
+  errorCount: number;
+  summary: string | null;
+}
+
+/** GET /runs/:id — log de uma execução (execution_logs). */
+export interface ExecutionLog {
+  id: number;
+  level: string;
+  step: string | null;
+  message: string;
+  meta: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+/** Resumo gravado pela coleta em data/last-run.json (campos conhecidos; pode evoluir). */
+export interface LastRunSummary {
+  runId?: number;
+  status?: string;
+  trigger?: string;
+  startedAt?: string;
+  finishedAt?: string;
+  discovered?: number;
+  created?: number;
+  updated?: number;
+  duplicate?: number;
+  errors?: number;
+  summary?: string;
+  [key: string]: unknown;
+}
+
+/** GET /runs */
+export interface ExecutionsResponse {
+  runs: ExecutionRun[];
+  lastRun: LastRunSummary | null;
+}
+
+/** GET /runs/:id */
+export interface ExecutionDetail {
+  run: ExecutionRun;
+  logs: ExecutionLog[];
+}
+
+/** GET /sources */
+export interface SourceInfo {
+  id: number;
+  key: string;
+  name: string;
+  kind: string;
+  enabled: boolean;
+  supportState: string;
+  verifiedAt: string | null;
+  updatedAt: string;
+}
+
 /** Transições permitidas — espelho das máquinas de estado do backend (validação final é sempre no servidor). */
 export const JOB_TRANSITIONS: Record<JobStatus, JobStatus[]> = {
   new: ["prioritized", "discarded", "closed"],

@@ -416,12 +416,15 @@ CREATE TABLE credentials (
 
 **No Marco 1 não existe busca automática nem manual:** as vagas são cadastradas pelo usuário. Não haverá rota `/runs` nem `/sources` antes de existir ao menos um conector funcional verificado.
 
-| Método | Rota           | Descrição                  |
-| ------ | -------------- | -------------------------- |
-| GET    | `/runs`        | histórico de execuções     |
-| POST   | `/runs`        | execução manual de coleta  |
-| GET    | `/sources`     | fontes com `support_state` |
-| PATCH  | `/sources/:id` | habilita/desabilita fonte  |
+**Implementado na Fase 2 (somente leitura):**
+
+| Método | Rota         | Descrição                                                                 |
+| ------ | ------------ | ------------------------------------------------------------------------- |
+| GET    | `/runs`      | histórico de execuções + resumo de `data/last-run.json`                   |
+| GET    | `/runs/:id`  | uma execução com o passo a passo de `execution_logs`                      |
+| GET    | `/sources`   | fontes com `support_state`, `verified_at` e `enabled`                     |
+
+**Ainda não implementado (Fase 2):** `POST /runs` (disparar coleta pela API — hoje só via CLI/agendador) e `PATCH /sources/:id` (habilitar/desabilitar fonte pela UI).
 
 ### 4.6 IA — extração (Fase 2) e análise (Fase 3)
 
@@ -976,7 +979,9 @@ Regras (válidas desde o Marco 1):
 
 **Etapa 1 concluída — cadastro assistido por IA:** rotas `/extractions/status|from-text|from-url`, provedor `AiProvider` (compatível OpenAI), prévia editável em `/vagas/nova` com confirmação humana, detecção de duplicatas na prévia, `jobs.posted_at` (migração 002) e proteções de SSRF/URL. CA: extrair de texto → conferir → confirmar → vaga criada com evento; sem chave de IA, o restante segue funcionando.
 
-**Etapa 2 concluída — coleta via CLI:** **dois conectores de API verificados** — Remotive (2.1) e Remote OK (2026-11-04, ver `docs/FONTES.md`) —, `npm run collect` com normalização + dedupe (2.2), isolamento de falha por fonte (2.3), lock de arquivo com execução `skipped` (2.4, sem missed-run ainda) e registro em `docs/FONTES.md` (2.7). CA: reexecutar → `new_count=0`; fonte quebrada → `partial` e as demais gravam; duas execuções simultâneas → uma `skipped`. O script `scripts/install-task.ps1` instala a tarefa diária das 18:00 (2.5) — a instalação é feita pelo usuário, e o PC precisa estar ligado. Falta a página de Execuções (2.6) e a verificação de missed-run.
+**Etapa 2 concluída — coleta via CLI:** **dois conectores de API verificados** — Remotive (2.1) e Remote OK (2026-11-04, ver `docs/FONTES.md`) —, `npm run collect` com normalização + dedupe (2.2), isolamento de falha por fonte (2.3), lock de arquivo com execução `skipped` (2.4, sem missed-run ainda) e registro em `docs/FONTES.md` (2.7). CA: reexecutar → `new_count=0`; fonte quebrada → `partial` e as demais gravam; duas execuções simultâneas → uma `skipped`. O script `scripts/install-task.ps1` instala a tarefa diária das 18:00 (2.5) — a instalação é feita pelo usuário, e o PC precisa estar ligado.
+
+**Etapa 3 concluída — página de Execuções:** `GET /runs` (histórico + `last-run.json`), `GET /runs/:id` (logs) e `GET /sources`; página `/execucoes` no menu com resumo da última coleta, fontes, histórico e logs. CA (2.6): o usuário vê horário, contagens, fontes e erros. Falta a verificação de missed-run (2.4).
 
 | #   | Tarefa                                                        | CA                                                                                           |
 | --- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |

@@ -136,6 +136,10 @@ export function listSearchRuns(db: Db, limit = 20): SearchRunRow[] {
   );
 }
 
+export function getSearchRun(db: Db, id: number): SearchRunRow | undefined {
+  return db.get<SearchRunRow>(`SELECT * FROM search_runs WHERE id = ?`, [id]);
+}
+
 export function getLastScheduledRun(db: Db): SearchRunRow | undefined {
   return db.get<SearchRunRow>(
     `SELECT * FROM search_runs WHERE trigger = 'scheduled' ORDER BY started_at DESC LIMIT 1`,
@@ -165,6 +169,29 @@ export function insertExecutionLog(db: Db, data: ExecutionLogInsert): void {
       new Date().toISOString(),
     ],
   );
+}
+
+export interface ExecutionLogRow {
+  id: number;
+  run_id: number | null;
+  job_type: string;
+  level: string;
+  step: string | null;
+  message: string;
+  meta_json: string | null;
+  created_at: string;
+}
+
+/** Logs de uma execução, na ordem em que foram gravados (id é sequencial). */
+export function listExecutionLogs(db: Db, runId: number): ExecutionLogRow[] {
+  return db.all<ExecutionLogRow>(`SELECT * FROM execution_logs WHERE run_id = ? ORDER BY id ASC`, [
+    runId,
+  ]);
+}
+
+/** Fontes registradas, em ordem alfabética de chave. */
+export function listSources(db: Db): SourceRow[] {
+  return db.all<SourceRow>(`SELECT * FROM sources ORDER BY key ASC`);
 }
 
 /** Total de logs gravados para uma execução (usado nos testes). */

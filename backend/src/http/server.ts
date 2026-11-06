@@ -10,6 +10,7 @@ import { jobsRouter, activityRouter } from "./routes/jobs.js";
 import { applicationsRouter, notesRouter } from "./routes/applications.js";
 import { dashboardRouter } from "./routes/dashboard.js";
 import { extractionsRouter } from "./routes/extractions.js";
+import { runsRouter, sourcesRouter } from "./routes/runs.js";
 import { systemRouter } from "./routes/system.js";
 import type { ServiceContext } from "../services/context.js";
 
@@ -51,6 +52,8 @@ export function createServer(
   api.use("/notes", notesRouter(ctx));
   api.use("/activity", activityRouter(ctx));
   api.use("/extractions", extractionsRouter(ctx));
+  api.use("/runs", runsRouter(ctx));
+  api.use("/sources", sourcesRouter(ctx));
   api.use("/", systemRouter(ctx));
   app.use("/api/v1", api);
 

@@ -32,10 +32,11 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 - ✅ **Lock de execução** (`data/.lock`): duas execuções simultâneas → a segunda fica `skipped`, sem corromper dados
 - ✅ Falha de uma fonte **não derruba as demais** (`status='partial'`) e o resumo fica em `data/last-run.json`
 - ✅ **Agendamento diário às 18:00** no Windows via `scripts/install-task.ps1` (o PC precisa estar ligado)
+- ✅ **Página de Execuções** (`/execucoes`): histórico de `search_runs`, logs passo a passo de `execution_logs`, fontes registradas e o resumo de `data/last-run.json`
 
-✅ **159 testes automatizados** (domínio, API, extração, provedor real de IA por loopback, SSRF, duplicatas, config, backup/restore, conectores, coleta e lock) — 100% offline, sem chave de IA e sem rede externa.
+✅ **169 testes automatizados** (domínio, API, extração, provedor real de IA por loopback, SSRF, duplicatas, config, backup/restore, conectores, coleta, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
 
-**Não implementado** (por design, por enquanto): página de Execuções no dashboard, análise de compatibilidade com currículo, Playwright/automação de envio, upload de currículo e lembretes.
+**Não implementado** (por design, por enquanto): análise de compatibilidade com currículo, Playwright/automação de envio, upload de currículo e lembretes.
 
 ## Requisitos
 
@@ -104,6 +105,17 @@ npm run collect
 
 Fontes, campos, limites e condições de uso: [`docs/FONTES.md`](docs/FONTES.md).
 
+## Página de Execuções
+
+Com o servidor rodando (`npm run dev` ou `npm start`), abra **<http://127.0.0.1:3000/execucoes>** (ou clique em **Execuções** no menu). A página mostra:
+
+- **Resumo da última coleta** gravado em `data/last-run.json`;
+- **Fontes registradas** (Remotive, Remote OK) com estado de verificação e se estão habilitadas;
+- **Histórico** das execuções com origem (manual/agendada), status, duração, contagens e resumo;
+- **Logs** de cada execução (passo, nível, mensagem e detalhes) ao clicar em _Ver logs_.
+
+As rotas usadas são somente leitura: `GET /api/v1/runs`, `GET /api/v1/runs/:id` e `GET /api/v1/sources`.
+
 ## Agendamento no Windows (18:00)
 
 Para rodar a coleta automaticamente todos os dias às 18:00 (horário local), depois de `npm run build`:
@@ -118,7 +130,7 @@ powershell -ExecutionPolicy Bypass -File scripts/install-task.ps1
 - Outro horário: `-At "19:30"`. Remover: `-Uninstall`.
 - Resultados: `search_runs`/`execution_logs` no banco, `data/last-run.json` e `data/logs/`.
 
-A página de Execuções no dashboard (para acompanhar tudo pela UI) é a próxima etapa.
+Acompanhe pela página **Execuções** (`/execucoes`) — veja a seção acima.
 
 ## Backup e restauração
 
