@@ -24,6 +24,7 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 - ✅ **Detecção de duplicatas** na prévia (URL normalizada; empresa+cargo como indício) — a decisão é sempre sua
 - ✅ Campos não identificados ficam **vazios**; a data atual nunca vira data de publicação
 - ✅ Sem chave de IA, o restante do JobPilot segue funcionando normalmente
+- ✅ Falhas transitórias do provedor (429/5xx, incluindo o 503 de sobrecarga do Gemini) são repetidas até 3 vezes com espera crescente
 
 **Fase 2 — coleta de vagas**
 
@@ -34,7 +35,7 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 - ✅ **Agendamento diário às 18:00** no Windows via `scripts/install-task.ps1` (o PC precisa estar ligado)
 - ✅ **Página de Execuções** (`/execucoes`): histórico de `search_runs`, logs passo a passo de `execution_logs`, fontes registradas e o resumo de `data/last-run.json`
 
-✅ **169 testes automatizados** (domínio, API, extração, provedor real de IA por loopback, SSRF, duplicatas, config, backup/restore, conectores, coleta, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
+✅ **173 testes automatizados** (domínio, API, extração, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
 
 **Não implementado** (por design, por enquanto): análise de compatibilidade com currículo, Playwright/automação de envio, upload de currículo e lembretes.
 

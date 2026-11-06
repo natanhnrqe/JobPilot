@@ -33,6 +33,22 @@ AI_MODEL=gpt-4o-mini                    # opcional (default)
 AI_TIMEOUT_MS=60000                     # opcional (default 60 s)
 ```
 
+**Gemini (Google AI Studio):** use o endpoint de compatibilidade com OpenAI. A URL base vai
+**sem** `/chat/completions` (o JobPilot acrescenta):
+
+```env
+AI_API_KEY=sua-chave-do-google-ai-studio
+AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+AI_MODEL=gemini-3.8-flash
+```
+
+- O nome do modelo deve ser um dos disponíveis para a sua chave — confira em
+  `GET https://generativelanguage.googleapis.com/v1beta/openai/models`.
+- **Vertex AI** não é suportado apenas com API key (exige OAuth/service account); este exemplo é
+  para a Gemini API do Google AI Studio.
+- O `provider` em `/extractions/status` continua `openai-compatible`: é o formato do protocolo,
+  não o nome da empresa.
+
 3. Reinicie o backend. Confirme em `GET /api/v1/extractions/status` que `enabled: true`.
 
 Regras de segurança:
@@ -45,6 +61,8 @@ Regras de segurança:
 ## 3. Custos externos
 
 - Cada extração faz **1 chamada** ao provedor (até 2, se a primeira resposta sair fora do esquema).
+  Falhas transitórias do provedor (429 e 5xx, incluindo o 503 de sobrecarga do Gemini) são
+  repetidas até **3 tentativas** com espera crescente, antes de reportar o erro.
 - O consumo é da **sua conta** no provedor e segue a tabela de preços dele — o JobPilot não tem
   contrato nem crédito próprio.
 - Ordem de grandeza do custo: o prompt de extração é pequeno (centenas de tokens). Modelos como
@@ -60,8 +78,9 @@ Regras de segurança:
    JSON inválido, esquema inválido, provedor indisponível, duplicatas, SSRF e HTML.
    Além do provedor falso, `backend/tests/integration/aiProvider.test.ts` exercita o **provedor
    real** contra um servidor local que emula a API da OpenAI: formato da requisição, 401/403, 429,
-   5xx, timeout, conexão recusada e o fluxo completo (texto → extração real → prévia → confirmação →
-   lista) — tudo por loopback, sem chave e sem rede externa.
+   5xx, retentativas (503/429 transitórios e persistente), timeout, conexão recusada e o fluxo
+   completo (texto → extração real → prévia → confirmação → lista) — tudo por loopback, sem chave
+   e sem rede externa.
 2. **API local de mentira (smoke test manual):** suba um servidor que responda
    `/v1/chat/completions` com o JSON que quiser e aponte o JobPilot para ele:
 
@@ -81,10 +100,11 @@ AI_MODEL=mock-model
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | Sem `AI_API_KEY`                                       | `config.ai = null`; nenhuma chamada externa é feita                                                   | aviso em `/vagas/nova` + `503 AI_UNAVAILABLE` na extração  |
 | Chave recusada (401/403)                               | erro do provedor convertido                                                                          | `503 AI_UNAVAILABLE` com orientação de revisar `AI_API_KEY` |
-| Cota/limite atingido (429)                             | idem                                                                                                | `503 AI_UNAVAILABLE` indicando cota                        |
+| Cota/limite atingido (429)                             | até 3 tentativas com espera; depois                                                                  | `503 AI_UNAVAILABLE` indicando cota                        |
+| Serviço sobrecarregado (503, ex.: Gemini "model is overloaded") | até 3 tentativas com espera; depois                                                        | `503 AI_UNAVAILABLE` com o motivo do provedor              |
 | Rede/timed out                                         | `AbortSignal.timeout(AI_TIMEOUT_MS)`                                                                 | `503 AI_UNAVAILABLE` com o tempo limite                    |
 | Resposta fora do esquema ou sem JSON                   | 2 tentativas; depois                                                                                 | `502 AI_INVALID_RESPONSE` com os problemas listados       |
-| Erro 5xx do provedor                                   | falha                                                                                                | `502 AI_ERROR` com status e trecho (limitado)              |
+| Outro erro 5xx do provedor (500/502/504)               | até 3 tentativas; depois                                                                             | `502 AI_ERROR` com status e trecho (limitado)              |
 | Página bloqueada (401/403/429), PDF, muito grande, destino privado | falha **antes** de chamar a IA                                                               | `400/413/415/422 FETCH_ERROR` + orientação de colar o texto |
 
 Em **todos** os casos o restante do JobPilot (dashboard, vagas manuais, candidaturas, notas,

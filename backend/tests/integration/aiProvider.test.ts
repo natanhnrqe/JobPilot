@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 import { createAiProvider } from "../../src/ai/provider.js";
 import type { AiConfig } from "../../src/config/index.js";
+import { AppError } from "../../src/domain/errors.js";
 import { makeTestServer } from "../helpers.js";
 import { VALID_EXTRACTION } from "../fakeAi.js";
 
@@ -91,9 +92,14 @@ function providerConfig(overrides: Partial<AiConfig> = {}): AiConfig {
   };
 }
 
+/** Provedor real com espera entre tentativas zerada (testes rápidos). */
+function makeProvider(overrides: Partial<AiConfig> = {}) {
+  return createAiProvider(providerConfig(overrides), { retryDelayMs: 0 });
+}
+
 describe("OpenAiCompatibleProvider — protocolo de Chat Completions", () => {
   it("envia a requisição no formato da OpenAI e devolve texto + tokens", async () => {
-    const provider = createAiProvider(providerConfig());
+    const provider = makeProvider();
     const completion = await provider.completeJson("SISTEMA", "USUARIO");
 
     expect(provider.name).toBe("openai-compatible");
@@ -117,7 +123,7 @@ describe("OpenAiCompatibleProvider — protocolo de Chat Completions", () => {
   });
 
   it("não duplica a barra quando AI_BASE_URL termina em '/'", async () => {
-    const provider = createAiProvider(providerConfig({ baseUrl: `${baseUrl}/` }));
+    const provider = makeProvider({ baseUrl: `${baseUrl}/` });
     await provider.completeJson("s", "u");
     expect(received[0]!.path).toBe("/v1/chat/completions");
   });
@@ -126,7 +132,7 @@ describe("OpenAiCompatibleProvider — protocolo de Chat Completions", () => {
 describe("OpenAiCompatibleProvider — falhas do provedor", () => {
   it("401/403 → AI_UNAVAILABLE com orientação sobre AI_API_KEY", async () => {
     responder = () => ({ status: 401, body: '{"error":"invalid key"}' });
-    const provider = createAiProvider(providerConfig());
+    const provider = makeProvider();
     await expect(provider.completeJson("s", "u")).rejects.toMatchObject({
       code: "AI_UNAVAILABLE",
       status: 503,
@@ -136,14 +142,14 @@ describe("OpenAiCompatibleProvider — falhas do provedor", () => {
 
   it("429 → AI_UNAVAILABLE indicando cota", async () => {
     responder = () => ({ status: 429, body: "rate limited" });
-    const provider = createAiProvider(providerConfig());
+    const provider = makeProvider();
     await expect(provider.completeJson("s", "u")).rejects.toMatchObject({ code: "AI_UNAVAILABLE" });
     await expect(provider.completeJson("s", "u")).rejects.toThrow(/Cota/);
   });
 
   it("5xx → AI_ERROR com o status", async () => {
     responder = () => ({ status: 500, body: "boom" });
-    const provider = createAiProvider(providerConfig());
+    const provider = makeProvider();
     await expect(provider.completeJson("s", "u")).rejects.toMatchObject({
       code: "AI_ERROR",
       status: 502,
@@ -152,13 +158,13 @@ describe("OpenAiCompatibleProvider — falhas do provedor", () => {
 
   it("resposta sem conteúdo utilizável → AI_ERROR", async () => {
     responder = () => ({ status: 200, body: JSON.stringify({ choices: [] }) });
-    const provider = createAiProvider(providerConfig());
+    const provider = makeProvider();
     await expect(provider.completeJson("s", "u")).rejects.toMatchObject({ code: "AI_ERROR" });
   });
 
   it("timeout → AI_UNAVAILABLE", async () => {
     responder = () => ({ status: 200, body: "{}", delayMs: 300 });
-    const provider = createAiProvider(providerConfig({ timeoutMs: 50 }));
+    const provider = makeProvider({ timeoutMs: 50 });
     await expect(provider.completeJson("s", "u")).rejects.toMatchObject({
       code: "AI_UNAVAILABLE",
       status: 503,
@@ -166,10 +172,71 @@ describe("OpenAiCompatibleProvider — falhas do provedor", () => {
   });
 
   it("conexão recusada → AI_UNAVAILABLE", async () => {
-    const provider = createAiProvider(
-      providerConfig({ baseUrl: "http://127.0.0.1:1/v1", timeoutMs: 500 }),
-    );
+    const provider = makeProvider({ baseUrl: "http://127.0.0.1:1/v1", timeoutMs: 500 });
     await expect(provider.completeJson("s", "u")).rejects.toMatchObject({ code: "AI_UNAVAILABLE" });
+  });
+});
+
+describe("OpenAiCompatibleProvider — retentativas em falhas transitórias", () => {
+  it("503 transitório (duas falhas) → terceira tentativa conclui", async () => {
+    let calls = 0;
+    responder = () => {
+      calls++;
+      return calls < 3
+        ? { status: 503, body: '{"error":{"code":503,"status":"UNAVAILABLE"}}' }
+        : DEFAULT_RESPONDER();
+    };
+    const provider = makeProvider();
+    const completion = await provider.completeJson("s", "u");
+    expect(completion.text).toBe(VALID_EXTRACTION);
+    expect(received).toHaveLength(3);
+  });
+
+  it("503 persistente → AI_UNAVAILABLE após 3 tentativas, com o motivo do provedor", async () => {
+    responder = () => ({
+      status: 503,
+      body: JSON.stringify({
+        error: {
+          code: 503,
+          message: "The model is overloaded. Please try again later.",
+          status: "UNAVAILABLE",
+        },
+      }),
+    });
+    const provider = makeProvider();
+    const error = await provider.completeJson("s", "u").then(
+      () => null,
+      (err: unknown) => err,
+    );
+
+    expect(error).toBeInstanceOf(AppError);
+    expect(error).toMatchObject({ code: "AI_UNAVAILABLE", status: 503 });
+    expect((error as AppError).message).toMatch(/sobrecarregado|indisponível/);
+    expect((error as AppError).details.trecho).toContain("overloaded");
+    expect(received).toHaveLength(3);
+  });
+
+  it("429 transitório → repete e conclui", async () => {
+    let calls = 0;
+    responder = () => {
+      calls++;
+      return calls === 1 ? { status: 429, body: "rate limited" } : DEFAULT_RESPONDER();
+    };
+    const provider = makeProvider();
+    await expect(provider.completeJson("s", "u")).resolves.toMatchObject({
+      text: VALID_EXTRACTION,
+    });
+    expect(received).toHaveLength(2);
+  });
+
+  it("400 não é repetido (erro do pedido, não transitório)", async () => {
+    responder = () => ({ status: 400, body: '{"error":"bad request"}' });
+    const provider = makeProvider();
+    await expect(provider.completeJson("s", "u")).rejects.toMatchObject({
+      code: "AI_ERROR",
+      status: 502,
+    });
+    expect(received).toHaveLength(1);
   });
 });
 

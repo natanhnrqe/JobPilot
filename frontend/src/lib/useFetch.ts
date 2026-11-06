@@ -62,6 +62,11 @@ export function errorMessage(err: unknown): string {
         .join("; ");
       return `${err.message} (${parts})`;
     }
+    // Motivo devolvido pelo provedor (ex.: "model is overloaded"), quando houver.
+    const trecho = err.details.trecho;
+    if (typeof trecho === "string" && trecho.trim() !== "") {
+      return `${err.message} Detalhe do provedor: ${trecho.trim()}`;
+    }
     return err.message;
   }
   return String(err);
