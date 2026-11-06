@@ -27,13 +27,13 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 
 **Fase 2 — coleta de vagas**
 
-- ✅ **Conector Remotive** verificado na prática (API pública) e registrado em [`docs/FONTES.md`](docs/FONTES.md)
+- ✅ **Conectores Remotive e Remote OK** verificados na prática (APIs públicas) e registrados em [`docs/FONTES.md`](docs/FONTES.md)
 - ✅ **CLI de coleta** (`npm run collect`): busca as fontes, grava pelo mesmo caminho do cadastro manual, deduplica e registra a execução em `search_runs` + `execution_logs`
 - ✅ **Lock de execução** (`data/.lock`): duas execuções simultâneas → a segunda fica `skipped`, sem corromper dados
 - ✅ Falha de uma fonte **não derruba as demais** (`status='partial'`) e o resumo fica em `data/last-run.json`
 - ✅ **Agendamento diário às 18:00** no Windows via `scripts/install-task.ps1` (o PC precisa estar ligado)
 
-✅ **148 testes automatizados** (domínio, API, extração, provedor real de IA por loopback, SSRF, duplicatas, config, backup/restore, conector, coleta e lock) — 100% offline, sem chave de IA e sem rede externa.
+✅ **159 testes automatizados** (domínio, API, extração, provedor real de IA por loopback, SSRF, duplicatas, config, backup/restore, conectores, coleta e lock) — 100% offline, sem chave de IA e sem rede externa.
 
 **Não implementado** (por design, por enquanto): página de Execuções no dashboard, análise de compatibilidade com currículo, Playwright/automação de envio, upload de currículo e lembretes.
 
@@ -90,7 +90,7 @@ npm run db:migrate
 
 ## Coleta de vagas (CLI)
 
-Busca as fontes verificadas (hoje: Remotive) e grava as vagas novas:
+Busca as fontes verificadas (Remotive e Remote OK) e grava as vagas novas:
 
 ```powershell
 npm run collect
@@ -100,7 +100,7 @@ npm run collect
 - Cada execução é registrada em `search_runs` e `execution_logs`; o resumo também fica em `data/last-run.json`.
 - Duas execuções simultâneas não se atropelam: a segunda é registrada como `skipped` (lock em `data/.lock`).
 - Código de saída: `0` para sucesso/parcial, `1` para falha total.
-- O agendamento automático (Windows, 18:00) é a próxima etapa; por enquanto rode o comando manualmente.
+- O agendamento automático (Windows, 18:00) usa `scripts/install-task.ps1`; veja a seção seguinte.
 
 Fontes, campos, limites e condições de uso: [`docs/FONTES.md`](docs/FONTES.md).
 

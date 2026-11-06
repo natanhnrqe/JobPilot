@@ -4,17 +4,17 @@
 > código. Nenhum conector aparece aqui como "funcionando" sem ter sido testado com resposta real.
 >
 > **Metodologia:** requisição real à API com `User-Agent` identificável, conferência do corpo da
-> resposta, dos campos efetivamente presentes e das condições de uso publicadas. Data de verificação
-> de tudo nesta página: **2026-11-03**.
+> resposta, dos campos efetivamente presentes e das condições de uso publicadas. Datas de verificação:
+> Remotive em **2026-11-03**; Remote OK em **2026-11-04** (com reconferência de parâmetros e tags).
 
 ## Resumo
 
-| Fonte                 | Status no código      | Acesso            | Verificada em |
-| --------------------- | --------------------- | ----------------- | ------------- |
-| Remotive              | ✅ implementada       | API pública (GET) | 2026-11-03    |
-| Remote OK             | ⏳ próxima etapa      | API pública (GET) | 2026-11-03    |
-| Arbeitnow             | ❌ não implementada   | API pública (GET) | 2026-11-03    |
-| Hacker News (Algolia) | ❌ não implementada   | API pública (GET) | 2026-11-03    |
+| Fonte                 | Status no código    | Acesso            | Verificada em |
+| --------------------- | ------------------- | ----------------- | ------------- |
+| Remotive              | ✅ implementada     | API pública (GET) | 2026-11-03    |
+| Remote OK             | ✅ implementada     | API pública (GET) | 2026-11-04    |
+| Arbeitnow             | ❌ não implementada | API pública (GET) | 2026-11-03    |
+| Hacker News (Algolia) | ❌ não implementada | API pública (GET) | 2026-11-03    |
 
 ---
 
@@ -53,7 +53,7 @@
   de campos, remoção de HTML, filtro de categoria, limites (`maxJobs`, abort) e falhas (resposta
   inesperada, HTTP 429, vaga sem url/título).
 
-## Remote OK — verificada, próxima etapa
+## Remote OK — implementada (`backend/src/connectors/remoteok.ts`)
 
 - **Documentação oficial:** a própria resposta da API traz os termos; painel público em
   <https://remoteok.com/api>.
@@ -62,13 +62,31 @@
 - **Campos efetivamente presentes** (conferidos): `slug`, `id`, `epoch`, `date`, `company`,
   `position`, `tags`, `description` (HTML), `location`, `apply_url`, `salary_min`, `salary_max`,
   `url`, `logo`.
-- **Limitações conhecidas:** ~100 vagas por resposta; `salary_min`/`salary_max` são números sem
-  moeda (usar apenas quando forem informativos — nada inventado); `date` já vem em ISO com fuso.
+- **Campos usados pelo conector:** `id` (→ `external_id`), `url` (fallback `apply_url`, →
+  `source_url`), `position` (→ título), `company`, `location`, `description` (HTML convertido em
+  texto), `date` (ISO com fuso → `posted_at`; `epoch` como fallback), `salary_min`/`salary_max`
+  (→ texto de salário), `workMode` fixo em `remote` (a fonte é 100% remota por definição).
+- **Limitações conhecidas:**
+  - os parâmetros de consulta (`?tags=dev`, `?tag=dev`) são **ignorados**: as três respostas
+    trouxeram as mesmas 99 vagas. Não há filtro no servidor;
+  - filtrar por `tags` no cliente **não é confiável**: "Front End Developer" veio apenas com
+    `["front end", "other"]`, e 69 das 99 vagas tinham alguma tag "dev-ish". Por isso o conector
+    **não filtra** — a triagem fica no JobPilot;
+  - ~100 vagas por resposta (as mais recentes), não é um histórico completo;
+  - `salary_min`/`salary_max` são números **sem moeda**: o conector reproduz o número (ex.: `4000`)
+    ou a faixa (`3000–5000`) e **não inventa** símbolo/moeda;
+  - a fonte não informa nível nem tipo de contrato: `contractType` fica `unknown` (as `tags` não
+    são fonte confiável para isso);
+  - `date` já vem em ISO com fuso (`2026-11-03T16:00:25+00:00`), normalizada para UTC.
 - **Condições de uso (termos da própria API):** vincular de volta com `follow` (sem `nofollow`) e
   mencionar "Remote OK" como fonte; não usar o logo sem permissão (marca registrada).
-- **Verificação:** resposta HTTP 200 com array JSON válido; campos acima conferidos; termos lidos no
-  próprio corpo da resposta (`legal`).
-- **Status:** pesquisa concluída; implementação é a próxima etapa da Fase 2.
+- **Verificação:** resposta HTTP 200 com array JSON válido; campos acima conferidos campo a campo;
+  termos lidos no próprio corpo da resposta (`legal`); execução real de coleta com banco temporário
+  gravou 98 vagas novas e 1 duplicada (fonte ok).
+- **Cobertura de testes:** `backend/tests/unit/remoteok.test.ts` — **11 testes offline** com payload
+  fixo (servidor local), cobrindo verificação, cache (1 requisição para `verify`+`fetch`), descarte
+  do aviso legal e de vagas sem URL, mapeamento de campos, remoção de HTML, salário sem moeda,
+  data com fallback de `epoch`, limites (`maxJobs`, abort) e falhas (resposta inesperada, HTTP 429).
 
 ## Arbeitnow — verificada, não implementada
 

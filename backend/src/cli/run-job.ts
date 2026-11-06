@@ -14,6 +14,7 @@ import { DbHolder } from "../db/holder.js";
 import { createLogger } from "../logging/logger.js";
 import { runCollect, type CollectTrigger } from "../services/collect.js";
 import { RemotiveConnector } from "../connectors/remotive.js";
+import { RemoteOkConnector } from "../connectors/remoteok.js";
 import type { SourceConnector } from "../connectors/types.js";
 
 function argValue(name: string): string | undefined {
@@ -36,7 +37,7 @@ const trigger: CollectTrigger = triggerArg === "scheduled" ? "scheduled" : "manu
 
 /** Fontes reais habilitadas — cada uma verificada e registrada em docs/FONTES.md. */
 function defaultConnectors(): SourceConnector[] {
-  return [new RemotiveConnector()];
+  return [new RemotiveConnector(), new RemoteOkConnector()];
 }
 
 const config = loadConfig();
