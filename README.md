@@ -107,7 +107,7 @@ Fontes, campos, limites e condições de uso: [`docs/FONTES.md`](docs/FONTES.md)
 
 ## Página de Execuções
 
-Com o servidor rodando (`npm run dev` ou `npm start`), abra **<http://127.0.0.1:3000/execucoes>** (ou clique em **Execuções** no menu). A página mostra:
+Com o servidor rodando, abra **<http://localhost:5173/execucoes>** em desenvolvimento (`npm run dev`) ou **<http://127.0.0.1:3000/execucoes>** com a interface compilada (`npm start`), ou clique em **Execuções** no menu. A página mostra:
 
 - **Resumo da última coleta** gravado em `data/last-run.json`;
 - **Fontes registradas** (Remotive, Remote OK) com estado de verificação e se estão habilitadas;
