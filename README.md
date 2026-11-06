@@ -35,7 +35,15 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 - ✅ **Agendamento diário às 18:00** no Windows via `scripts/install-task.ps1` (o PC precisa estar ligado)
 - ✅ **Página de Execuções** (`/execucoes`): histórico de `search_runs`, logs passo a passo de `execution_logs`, fontes registradas e o resumo de `data/last-run.json`
 
-✅ **173 testes automatizados** (domínio, API, extração, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
+**Fase 3 — preferências de busca (fatia 1)**
+
+- ✅ **Preferências em Configurações**: tipos de contrato desejados e opção de incluir vagas sem nível informado
+- ✅ **Filtro aplicado na coleta** (manual e das 18:00): a vaga fora das preferências nem entra no banco; o resumo mostra quantas foram filtradas
+- ✅ **Classificação pelo título** quando a fonte não informa o nível (caso do Remote OK): heurística conservadora, gravada como `contract_type_source = 'title'` e exibida como “classificado pelo título”
+- ✅ Padrão inicial: estágio, júnior/trainee e freelance, sem vagas de nível desconhecido — ajustável a qualquer momento
+- ✅ **Sem IA nesta etapa**: os filtros são determinísticos e não consomem chave nem créditos
+
+✅ **191 testes automatizados** (domínio, API, extração, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
 
 **Não implementado** (por design, por enquanto): análise de compatibilidade com currículo, Playwright/automação de envio, upload de currículo e lembretes.
 
@@ -106,6 +114,18 @@ npm run collect
 
 Fontes, campos, limites e condições de uso: [`docs/FONTES.md`](docs/FONTES.md).
 
+## Preferências de busca
+
+Em **Configurações → Preferências de busca** você escolhe quais tipos de contrato a coleta deve aceitar: estágio, júnior/trainee, pleno, sênior e freelance. A regra vale para a próxima coleta (manual ou automática das 18:00) e **não altera vagas já cadastradas**.
+
+- **Nenhum tipo marcado** = sem filtro por tipo de contrato (a coleta aceita tudo, como antes).
+- **Incluir vagas sem nível informado**: quando marcado, vagas cujo nível a fonte não informa e o título não permite classificar também entram.
+- **Classificação pelo título**: se a fonte não informa o nível, o JobPilot aplica uma heurística conservadora ao título (“Estágio”, “Estagiário”, “Intern”, “Júnior”, “Jr”, “Trainee”, “Freelance”, “Pleno”, “Sênior”, “Sr”, “Lead”…). A vaga é marcada como **classificada pelo título** e guarda `contract_type_source = 'title'` — nunca é apresentada como informação da fonte.
+- **Remote OK** não informa nível. Com o filtro estrito (sem “sem nível informado”), nenhuma vaga dele entra, a menos que o título permita a classificação.
+- **Sem IA**: essa etapa é 100% determinística. A IA continua restrita ao cadastro assistido.
+
+As rotas são `GET /api/v1/preferences` e `PUT /api/v1/preferences`.
+
 ## Página de Execuções
 
 Com o servidor rodando, abra **<http://localhost:5173/execucoes>** em desenvolvimento (`npm run dev`) ou **<http://127.0.0.1:3000/execucoes>** com a interface compilada (`npm start`), ou clique em **Execuções** no menu. A página mostra:
@@ -160,14 +180,14 @@ Apagar a pasta `data/` reinicia a aplicação vazia (os backups são perdidos ju
 backend/    API HTTP (Express + zod), domínio (máquinas de estado), repositórios SQL,
             migrações em backend/migrations/, testes em backend/tests/
 frontend/   React + TypeScript (Vite), páginas: Dashboard, Vagas, Candidaturas, Configurações
-docs/       ESCOPO.md, ESPECIFICACAO-TECNICA.md, INSTALACAO.md, BACKUP-RESTORE.md
+docs/       ESCOPO.md, ESPECIFICACAO-TECNICA.md, INSTALACAO.md, BACKUP-RESTORE.md, FONTES.md, IA.md
 data/       banco, backups e logs (não versionado)
 ```
 
 ## Próximos marcos (resumo da especificação)
 
 1. **Fase 2** — coleta automática de vagas de fontes verificadas + agendamento às 18:00
-2. **Fase 3** — IA para análise de compatibilidade (nunca inventa qualificações)
+2. **Fase 3** — preferências de busca (fatia 1 concluída) e IA para análise de compatibilidade (nunca inventa qualificações)
 3. **Fase 4** — candidaturas automatizadas com confirmação por candidatura, portais verificados e CAPTCHA sempre encaminhado ao humano
 4. **Fase 5** — lembretes de acompanhamento e consolidação
 

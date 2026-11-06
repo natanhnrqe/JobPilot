@@ -55,7 +55,7 @@ try {
   for (const source of result.sources) {
     const error = source.error ? ` — ${source.error}` : "";
     console.log(
-      `  - ${source.name}: ${source.status} (${source.created} novas, ${source.duplicate} duplicadas)${error}`,
+      `  - ${source.name}: ${source.status} (${source.created} novas, ${source.duplicate} duplicadas, ${source.filtered} filtradas)${error}`,
     );
   }
 

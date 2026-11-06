@@ -11,6 +11,7 @@ import {
   listSearchRuns,
   upsertSource,
 } from "../../src/repositories/sources.js";
+import { setSearchPreferences } from "../../src/repositories/preferences.js";
 
 /**
  * Testes OFFLINE da execução de coleta (Seção 7.2): conectores falsos com
@@ -27,6 +28,14 @@ beforeEach(() => {
   server = created.server;
   dataDir = created.dataDir;
   cleanup = created.cleanup;
+
+  // Estes testes exercitam o mecanismo de coleta (gravação, dedupe, falhas),
+  // não os filtros de preferência. O padrão da migração 004 é restritivo;
+  // aqui começamos sem filtro para isolar o comportamento testado.
+  setSearchPreferences(server.ctx.holder.get(), {
+    contractTypes: [],
+    includeUnknownContractType: true,
+  });
 });
 
 afterEach(() => cleanup());
@@ -404,5 +413,158 @@ describe("Execução de coleta — lock, limites e normalização", () => {
     const rows = jobRows();
     expect(rows).toHaveLength(2);
     expect(rows.every((row) => row.posted_at === null)).toBe(true);
+  });
+});
+
+describe("Execução de coleta — preferências de busca", () => {
+  function jobsWithContractTypes(): RawJob[] {
+    return [
+      rawJob("Estágio Backend", "https://fonte-a.example.com/vagas/1", {
+        externalId: "a-1",
+        contractType: "internship",
+      }),
+      rawJob("Dev Sênior", "https://fonte-a.example.com/vagas/2", {
+        externalId: "a-2",
+        contractType: "senior",
+      }),
+      rawJob("Vaga Sem Nível", "https://fonte-a.example.com/vagas/3", { externalId: "a-3" }),
+    ];
+  }
+
+  it("lista de tipos vazia não filtra (comportamento anterior preservado)", async () => {
+    setSearchPreferences(db(), {
+      contractTypes: [],
+      includeUnknownContractType: false,
+    });
+
+    const connector = fakeConnector({ key: "fonte-a", jobs: jobsWithContractTypes() });
+    const result = await runCollect(server.ctx, { connectors: [connector], trigger: "manual" });
+
+    expect(result.created).toBe(3);
+    expect(result.filtered).toBe(0);
+    expect(result.summary).not.toContain("filtradas");
+  });
+
+  it("filtra pelo tipo informado pela fonte e conta as ignoradas", async () => {
+    setSearchPreferences(db(), {
+      contractTypes: ["internship"],
+      includeUnknownContractType: false,
+    });
+
+    const connector = fakeConnector({ key: "fonte-a", jobs: jobsWithContractTypes() });
+    const result = await runCollect(server.ctx, { connectors: [connector], trigger: "manual" });
+
+    expect(result.created).toBe(1);
+    expect(result.filtered).toBe(2);
+    expect(result.sources[0]?.filtered).toBe(2);
+    expect(result.summary).toContain("2 filtradas");
+
+    const logs = db().all<{ message: string }>(
+      "SELECT message FROM execution_logs WHERE run_id = ?",
+      [result.runId],
+    );
+    expect(logs.some((log) => log.message.includes("filtradas pelas preferências"))).toBe(true);
+  });
+
+  it("classifica pelo título quando a fonte não informa e registra a origem", async () => {
+    setSearchPreferences(db(), {
+      contractTypes: ["internship", "junior"],
+      includeUnknownContractType: false,
+    });
+
+    const connector = fakeConnector({
+      key: "fonte-a",
+      jobs: [
+        rawJob("Estágio Backend", "https://fonte-a.example.com/vagas/1", { externalId: "a-1" }),
+        rawJob("Desenvolvedor Júnior", "https://fonte-a.example.com/vagas/2", {
+          externalId: "a-2",
+        }),
+        rawJob("Senior Software Engineer", "https://fonte-a.example.com/vagas/3", {
+          externalId: "a-3",
+        }),
+        rawJob("Product Designer", "https://fonte-a.example.com/vagas/4", { externalId: "a-4" }),
+      ],
+    });
+
+    const result = await runCollect(server.ctx, { connectors: [connector], trigger: "manual" });
+
+    expect(result.created).toBe(2);
+    expect(result.filtered).toBe(2);
+
+    const rows = db().all<{
+      title: string;
+      contract_type: string;
+      contract_type_source: string;
+    }>("SELECT title, contract_type, contract_type_source FROM jobs ORDER BY id");
+    expect(rows).toEqual([
+      {
+        title: "Estágio Backend",
+        contract_type: "internship",
+        contract_type_source: "title",
+      },
+      {
+        title: "Desenvolvedor Júnior",
+        contract_type: "junior",
+        contract_type_source: "title",
+      },
+    ]);
+  });
+
+  it("inclui vagas sem nível quando permitido, mas respeita níveis inferidos", async () => {
+    setSearchPreferences(db(), {
+      contractTypes: ["internship"],
+      includeUnknownContractType: true,
+    });
+
+    const connector = fakeConnector({
+      key: "fonte-a",
+      jobs: [
+        rawJob("Product Designer", "https://fonte-a.example.com/vagas/1", { externalId: "a-1" }),
+        rawJob("Senior Engineer", "https://fonte-a.example.com/vagas/2", { externalId: "a-2" }),
+      ],
+    });
+
+    const result = await runCollect(server.ctx, { connectors: [connector], trigger: "manual" });
+
+    expect(result.created).toBe(1);
+    expect(result.filtered).toBe(1);
+
+    const row = db().get<{ contract_type: string; contract_type_source: string }>(
+      "SELECT contract_type, contract_type_source FROM jobs",
+    );
+    expect(row).toEqual({ contract_type: "unknown", contract_type_source: "unknown" });
+  });
+
+  it("tipo informado pela fonte tem precedência sobre o título", async () => {
+    setSearchPreferences(db(), {
+      contractTypes: ["internship"],
+      includeUnknownContractType: false,
+    });
+
+    const connector = fakeConnector({
+      key: "fonte-a",
+      jobs: [
+        // Título diz "estágio", mas a fonte informa sênior: vale a fonte.
+        rawJob("Estágio Backend", "https://fonte-a.example.com/vagas/1", {
+          externalId: "a-1",
+          contractType: "senior",
+        }),
+        // Título diz "sênior", mas a fonte informa estágio: vale a fonte.
+        rawJob("Senior Developer", "https://fonte-a.example.com/vagas/2", {
+          externalId: "a-2",
+          contractType: "internship",
+        }),
+      ],
+    });
+
+    const result = await runCollect(server.ctx, { connectors: [connector], trigger: "manual" });
+
+    expect(result.created).toBe(1);
+    expect(result.filtered).toBe(1);
+
+    const row = db().get<{ contract_type: string; contract_type_source: string }>(
+      "SELECT contract_type, contract_type_source FROM jobs",
+    );
+    expect(row).toEqual({ contract_type: "internship", contract_type_source: "source" });
   });
 });

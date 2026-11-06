@@ -37,7 +37,13 @@ import {
   upsertSource,
 } from "../repositories/sources.js";
 import { findPossibleDuplicates, normalizeText, normalizeUrl } from "../domain/dedupe.js";
+import {
+  inferContractTypeFromTitle,
+  type ContractTypeSource,
+  type ContractTypeValue,
+} from "../domain/contractType.js";
 import { normalizePostedAt } from "../ai/schemas.js";
+import { getSearchPreferences, type SearchPreferences } from "../repositories/preferences.js";
 import { createJob } from "./jobs.js";
 import { acquireLock } from "./lock.js";
 
@@ -74,6 +80,8 @@ export interface SourceReport {
   discovered: number;
   created: number;
   duplicate: number;
+  /** Ignoradas pelas preferências de busca (tipo de contrato). */
+  filtered: number;
   error: string | null;
 }
 
@@ -87,6 +95,8 @@ export interface CollectResult {
   created: number;
   updated: number;
   duplicate: number;
+  /** Ignoradas pelas preferências de busca (tipo de contrato). */
+  filtered: number;
   errors: number;
   summary: string;
   sources: SourceReport[];
@@ -132,6 +142,9 @@ async function executeCollect(
 ): Promise<CollectResult> {
   const db = ctx.holder.get();
   const runId = insertSearchRun(db, { trigger: opts.trigger, startedAt });
+  // Preferências lidas uma vez por execução: mudanças no meio da coleta não
+  // produzem resultado inconsistente entre fontes.
+  const preferences = getSearchPreferences(db);
 
   const maxJobs = opts.maxJobsPerRun ?? DEFAULT_MAX_JOBS_PER_RUN;
   const timeoutMs = opts.sourceTimeoutMs ?? DEFAULT_SOURCE_TIMEOUT_MS;
@@ -159,12 +172,13 @@ async function executeCollect(
   let discovered = 0;
   let created = 0;
   let duplicate = 0;
+  let filtered = 0;
 
   for (const item of fetched) {
     const counts =
       item.status === "ok"
-        ? persistSource(ctx, item.sourceId, item.connector.key, item.jobs, runId)
-        : { created: 0, duplicate: 0 };
+        ? persistSource(ctx, item.sourceId, item.connector.key, item.jobs, runId, preferences)
+        : { created: 0, duplicate: 0, filtered: 0 };
 
     sources.push({
       key: item.connector.key,
@@ -173,12 +187,14 @@ async function executeCollect(
       discovered: item.jobs.length,
       created: counts.created,
       duplicate: counts.duplicate,
+      filtered: counts.filtered,
       error: item.error,
     });
 
     discovered += item.jobs.length;
     created += counts.created;
     duplicate += counts.duplicate;
+    filtered += counts.filtered;
   }
 
   const failed = sources.filter((s) => s.status === "error");
@@ -191,7 +207,7 @@ async function executeCollect(
           ? "failed"
           : "partial";
   const errors = sources.length === 0 ? 1 : failed.length;
-  const summary = buildSummary(sources, { discovered, created, duplicate });
+  const summary = buildSummary(sources, { discovered, created, duplicate, filtered });
   const finishedAt = now().toISOString();
 
   finishSearchRun(db, runId, {
@@ -215,6 +231,7 @@ async function executeCollect(
     created,
     updated: 0,
     duplicate,
+    filtered,
     errors,
     summary,
     sources,
@@ -265,6 +282,7 @@ function recordSkippedRun(
     created: 0,
     updated: 0,
     duplicate: 0,
+    filtered: 0,
     errors: 0,
     summary,
     sources: [],
@@ -397,15 +415,18 @@ function persistSource(
   sourceKey: string,
   jobs: RawJob[],
   runId: number,
-): { created: number; duplicate: number } {
+  preferences: SearchPreferences,
+): { created: number; duplicate: number; filtered: number } {
   let created = 0;
   let duplicate = 0;
+  let filtered = 0;
   let invalid = 0;
 
   for (const raw of jobs) {
-    const outcome = persistRawJob(ctx, sourceId, raw, runId);
+    const outcome = persistRawJob(ctx, sourceId, raw, runId, preferences);
     if (outcome === "created") created++;
     else if (outcome === "duplicate") duplicate++;
+    else if (outcome === "filtered") filtered++;
     else invalid++;
   }
 
@@ -414,14 +435,16 @@ function persistSource(
     jobType: "collect",
     level: "info",
     step: "persist",
-    message: `Fonte ${sourceKey}: ${created} novas, ${duplicate} duplicadas, ${invalid} ignoradas.`,
-    meta: { fonte: sourceKey },
+    message:
+      `Fonte ${sourceKey}: ${created} novas, ${duplicate} duplicadas, ` +
+      `${filtered} filtradas pelas preferências, ${invalid} ignoradas.`,
+    meta: { fonte: sourceKey, filtradas: filtered },
   });
 
-  return { created, duplicate };
+  return { created, duplicate, filtered };
 }
 
-type PersistOutcome = "created" | "duplicate" | "invalid";
+type PersistOutcome = "created" | "duplicate" | "filtered" | "invalid";
 
 /**
  * Valida/normaliza uma vaga bruta e grava pelo serviço existente.
@@ -433,6 +456,7 @@ function persistRawJob(
   sourceId: number,
   raw: RawJob,
   runId: number,
+  preferences: SearchPreferences,
 ): PersistOutcome {
   const db = ctx.holder.get();
 
@@ -448,6 +472,13 @@ function persistRawJob(
       meta: { fonte: sourceId },
     });
     return "invalid";
+  }
+
+  // Filtro de preferências antes de qualquer gravação: a vaga que não interessa
+  // nem entra no banco (e não altera o histórico de vagas já conhecidas).
+  const contract = resolveContractType(raw);
+  if (!matchesContractPreference(contract.type, preferences)) {
+    return "filtered";
   }
 
   const externalId = text(raw.externalId, 200);
@@ -475,7 +506,8 @@ function persistRawJob(
     company,
     location,
     workMode: pickWorkMode(raw.workMode),
-    contractType: pickContractType(raw.contractType),
+    contractType: contract.type,
+    contractTypeSource: contract.source,
     salaryText: text(raw.salaryText, 200),
     descriptionText: text(raw.descriptionText, 20_000),
     sourceUrl,
@@ -504,10 +536,38 @@ function pickWorkMode(value: string | undefined): (typeof WORK_MODES)[number] {
     : "unknown";
 }
 
-function pickContractType(value: string | undefined): (typeof CONTRACT_TYPES)[number] {
+function pickContractType(value: string | undefined): ContractTypeValue {
   return (CONTRACT_TYPES as readonly string[]).includes(value ?? "")
-    ? (value as (typeof CONTRACT_TYPES)[number])
+    ? (value as ContractTypeValue)
     : "unknown";
+}
+
+/**
+ * Precedência do tipo de contrato: o que a fonte informou > classificação
+ * conservadora pelo título > `unknown`. A origem acompanha o valor para que a
+ * UI mostre quando o nível foi inferido (nunca é apresentado como dado da fonte).
+ */
+function resolveContractType(raw: RawJob): {
+  type: ContractTypeValue;
+  source: ContractTypeSource;
+} {
+  const reported = pickContractType(raw.contractType);
+  if (reported !== "unknown") return { type: reported, source: "source" };
+
+  const inferred = inferContractTypeFromTitle(raw.title);
+  if (inferred) return { type: inferred, source: "title" };
+
+  return { type: "unknown", source: "unknown" };
+}
+
+/** Lista vazia = sem filtro por tipo; `unknown` só entra se o usuário permitir. */
+function matchesContractPreference(
+  type: ContractTypeValue,
+  preferences: SearchPreferences,
+): boolean {
+  if (preferences.contractTypes.length === 0) return true;
+  if (type === "unknown") return preferences.includeUnknownContractType;
+  return preferences.contractTypes.includes(type);
 }
 
 function text(value: string | undefined | null, max: number): string | null {
@@ -518,7 +578,7 @@ function text(value: string | undefined | null, max: number): string | null {
 
 function buildSummary(
   sources: SourceReport[],
-  counts: { discovered: number; created: number; duplicate: number },
+  counts: { discovered: number; created: number; duplicate: number; filtered: number },
 ): string {
   if (sources.length === 0) return "Nenhuma fonte configurada.";
 
@@ -532,6 +592,7 @@ function buildSummary(
     `${counts.created} novas`,
     `${counts.duplicate} duplicadas`,
   ];
+  if (counts.filtered > 0) parts.push(`${counts.filtered} filtradas`);
   if (skipped.length > 0) parts.push(`${skipped.length} desabilitadas`);
   if (failed.length > 0) {
     parts.push(`falhas: ${failed.map((s) => `${s.key} (${s.error ?? "erro"})`).join("; ")}`);

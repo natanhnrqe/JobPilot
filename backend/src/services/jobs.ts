@@ -30,6 +30,8 @@ export interface JobDto {
   location: string | null;
   workMode: string;
   contractType: string;
+  /** source|title|user|unknown — ver migração 004. */
+  contractTypeSource: string;
   salaryText: string | null;
   descriptionText: string | null;
   sourceUrl: string | null;
@@ -79,6 +81,7 @@ export function toJobDto(row: JobRow): JobDto {
     location: row.location,
     workMode: row.work_mode,
     contractType: row.contract_type,
+    contractTypeSource: row.contract_type_source,
     salaryText: row.salary_text,
     descriptionText: row.description_text,
     sourceUrl: row.source_url,
@@ -139,6 +142,7 @@ export function createJob(
     location?: string | null;
     workMode?: string;
     contractType?: string;
+    contractTypeSource?: string;
     salaryText?: string | null;
     descriptionText?: string | null;
     sourceUrl?: string | null;
@@ -171,6 +175,7 @@ export function updateJob(
     location: string | null;
     workMode: string;
     contractType: string;
+    contractTypeSource?: string;
     salaryText: string | null;
     descriptionText: string | null;
     sourceUrl: string | null;
@@ -182,7 +187,15 @@ export function updateJob(
   const db = ctx.holder.get();
   return db.withTransaction(() => {
     const row = requireJob(db, id);
-    const { status, ...fields } = patch;
+    const { status, ...patchFields } = patch;
+    // Edição manual do tipo de contrato sempre vira origem 'user'.
+    const fields =
+      patch.contractType !== undefined
+        ? {
+            ...patchFields,
+            contractTypeSource: patch.contractType === "unknown" ? "unknown" : "user",
+          }
+        : patchFields;
     const hasFields = Object.keys(fields).length > 0;
     const now = new Date().toISOString();
 

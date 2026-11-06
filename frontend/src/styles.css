@@ -583,6 +583,13 @@ button.link.danger {
   flex: 1;
 }
 
+.preference-options {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 8px 0 4px;
+}
+
 .job-form label {
   margin-top: 4px;
 }

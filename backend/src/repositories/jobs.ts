@@ -8,6 +8,8 @@ export interface JobRow {
   location: string | null;
   work_mode: string;
   contract_type: string;
+  /** De onde veio o tipo de contrato: source|title|user|unknown (migração 004). */
+  contract_type_source: string;
   salary_text: string | null;
   description_text: string | null;
   source_url: string | null;
@@ -31,6 +33,7 @@ export interface JobInsert {
   location?: string | null;
   workMode?: string;
   contractType?: string;
+  contractTypeSource?: string;
   salaryText?: string | null;
   descriptionText?: string | null;
   sourceUrl?: string | null;
@@ -44,17 +47,24 @@ export interface JobInsert {
 
 export function insertJob(db: Db, data: JobInsert): number {
   const now = new Date().toISOString();
+  const contractType = data.contractType ?? "unknown";
+  // Cadastro manual/assistido: o tipo veio do usuário. A coleta passa a
+  // origem explicitamente ('source' ou 'title').
+  const contractTypeSource =
+    data.contractTypeSource ?? (contractType === "unknown" ? "unknown" : "user");
+
   const result = db.run(
-    `INSERT INTO jobs (title, company, location, work_mode, contract_type, salary_text,
-                       description_text, source_url, posted_at, source_id, external_id,
-                       discovered_at, status, status_changed_at, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO jobs (title, company, location, work_mode, contract_type, contract_type_source,
+                       salary_text, description_text, source_url, posted_at, source_id,
+                       external_id, discovered_at, status, status_changed_at, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.title,
       data.company ?? null,
       data.location ?? null,
       data.workMode ?? "unknown",
-      data.contractType ?? "unknown",
+      contractType,
+      contractTypeSource,
       data.salaryText ?? null,
       data.descriptionText ?? null,
       data.sourceUrl ?? null,
@@ -97,6 +107,7 @@ export interface JobUpdate {
   location?: string | null;
   workMode?: string;
   contractType?: string;
+  contractTypeSource?: string;
   salaryText?: string | null;
   descriptionText?: string | null;
   sourceUrl?: string | null;
@@ -116,6 +127,7 @@ export function updateJobRow(db: Db, id: number, patch: JobUpdate): void {
     ["location", "location"],
     ["workMode", "work_mode"],
     ["contractType", "contract_type"],
+    ["contractTypeSource", "contract_type_source"],
     ["salaryText", "salary_text"],
     ["descriptionText", "description_text"],
     ["sourceUrl", "source_url"],

@@ -1,15 +1,9 @@
 import { z } from "zod";
 import { paginationQuery } from "./middleware/http.js";
+import { CONTRACT_TYPES as BASE_CONTRACT_TYPES } from "../domain/contractType.js";
 
 export const WORK_MODES = ["remote", "hybrid", "onsite", "unknown"] as const;
-export const CONTRACT_TYPES = [
-  "internship",
-  "junior",
-  "mid",
-  "senior",
-  "freelance",
-  "unknown",
-] as const;
+export const CONTRACT_TYPES = [...BASE_CONTRACT_TYPES, "unknown"] as const;
 export const JOB_STATUSES_API = ["new", "prioritized", "discarded", "closed"] as const;
 export const APPLICATION_STATUSES_API = [
   "preparing",
@@ -94,6 +88,17 @@ export const settingsSchema = z
   .refine((d) => d.displayName !== undefined || d.timezone !== undefined, {
     message: "Informe ao menos uma configuração.",
   });
+
+export const preferencesSchema = z
+  .object({
+    /** Vazio = não filtra por tipo de contrato. */
+    contractTypes: z.array(z.enum(BASE_CONTRACT_TYPES)).max(BASE_CONTRACT_TYPES.length).optional(),
+    includeUnknownContractType: z.boolean().optional(),
+  })
+  .refine(
+    (data) => data.contractTypes !== undefined || data.includeUnknownContractType !== undefined,
+    { message: "Informe ao menos uma preferência." },
+  );
 
 export const restoreSchema = z.object({
   fileName: z.string().trim().min(1),

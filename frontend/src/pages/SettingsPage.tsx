@@ -1,15 +1,25 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
-import type { BackupItem, RestoreResult, Settings } from "../api/types";
+import type {
+  BackupItem,
+  RestoreResult,
+  SearchContractType,
+  SearchPreferences,
+  Settings,
+} from "../api/types";
+import { SEARCH_CONTRACT_TYPES } from "../api/types";
 import { useFetch, errorMessage } from "../lib/useFetch";
-import { formatBytes, formatDateTime } from "../lib/format";
+import { CONTRACT_TYPE_LABELS, formatBytes, formatDateTime } from "../lib/format";
 
 export default function SettingsPage() {
   const settings = useFetch<Settings>("/settings");
   const backups = useFetch<{ items: BackupItem[] }>("/backups");
+  const preferences = useFetch<SearchPreferences>("/preferences");
 
   const [displayName, setDisplayName] = useState("");
   const [timezone, setTimezoneValue] = useState("");
+  const [contractTypes, setContractTypes] = useState<SearchContractType[]>([]);
+  const [includeUnknownContractType, setIncludeUnknownContractType] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -21,6 +31,13 @@ export default function SettingsPage() {
     }
   }, [settings.data]);
 
+  useEffect(() => {
+    if (preferences.data) {
+      setContractTypes(preferences.data.contractTypes);
+      setIncludeUnknownContractType(preferences.data.includeUnknownContractType);
+    }
+  }, [preferences.data]);
+
   async function run(fn: () => Promise<string>) {
     setBusy(true);
     setError(null);
@@ -29,6 +46,7 @@ export default function SettingsPage() {
       setMessage(await fn());
       settings.reload();
       backups.reload();
+      preferences.reload();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -40,6 +58,22 @@ export default function SettingsPage() {
     void run(async () => {
       await api.put("/settings", { displayName, timezone });
       return "Configurações salvas.";
+    });
+  }
+
+  function toggleContractType(type: SearchContractType) {
+    setContractTypes((current) =>
+      current.includes(type) ? current.filter((item) => item !== type) : [...current, type],
+    );
+  }
+
+  function savePreferences() {
+    void run(async () => {
+      await api.put("/preferences", {
+        contractTypes,
+        includeUnknownContractType,
+      });
+      return "Preferências de busca salvas. Elas valem para as próximas coletas.";
     });
   }
 
@@ -95,6 +129,47 @@ export default function SettingsPage() {
         <p className="muted small">
           O fuso horário define como as datas são exibidas na interface. Os dados são sempre
           gravados em UTC.
+        </p>
+      </section>
+
+      <section className="panel">
+        <h2>Preferências de busca</h2>
+        <p className="muted small">
+          Aplicadas na próxima coleta (manual ou automática das 18:00). Não alteram vagas já
+          cadastradas.
+        </p>
+        {preferences.error && <div className="alert alert-error">{preferences.error.message}</div>}
+        <div className="preference-options">
+          {SEARCH_CONTRACT_TYPES.map((type) => (
+            <label key={type} className="checkbox">
+              <input
+                type="checkbox"
+                checked={contractTypes.includes(type)}
+                onChange={() => toggleContractType(type)}
+              />
+              {CONTRACT_TYPE_LABELS[type]}
+            </label>
+          ))}
+        </div>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={includeUnknownContractType}
+            onChange={(e) => setIncludeUnknownContractType(e.target.checked)}
+          />
+          Incluir vagas sem nível informado
+        </label>
+        <button onClick={savePreferences} disabled={busy}>
+          Salvar preferências
+        </button>
+        <p className="muted small">
+          Se nenhum tipo for marcado, a coleta não filtra por tipo de contrato. Quando a fonte não
+          informa o nível, o JobPilot tenta classificá-lo pelo título (ex.: “Estágio”, “Júnior”); a
+          vaga aparece marcada como “classificada pelo título”.
+        </p>
+        <p className="muted small">
+          O Remote OK não informa nível. Com o filtro estrito (sem “sem nível informado”), nenhuma
+          vaga dele entra — a classificação pelo título é o que pode incluí-las.
         </p>
       </section>
 

@@ -234,7 +234,12 @@ export default function JobDetail() {
             </div>
             <div>
               <dt>Tipo de contrato</dt>
-              <dd>{CONTRACT_TYPE_LABELS[job.contractType]}</dd>
+              <dd>
+                {CONTRACT_TYPE_LABELS[job.contractType]}
+                {job.contractTypeSource === "title" && (
+                  <span className="muted small"> — classificado pelo título</span>
+                )}
+              </dd>
             </div>
             <div>
               <dt>Salário</dt>

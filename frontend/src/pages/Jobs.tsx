@@ -257,7 +257,18 @@ export default function Jobs() {
                   </td>
                   <td>{job.company ?? "—"}</td>
                   <td>{WORK_MODE_LABELS[job.workMode as WorkMode]}</td>
-                  <td>{CONTRACT_TYPE_LABELS[job.contractType as ContractType]}</td>
+                  <td>
+                    {CONTRACT_TYPE_LABELS[job.contractType as ContractType]}
+                    {job.contractTypeSource === "title" && (
+                      <span
+                        className="muted small"
+                        title="A fonte não informou o nível; classificado pelo título"
+                      >
+                        {" "}
+                        (inferido)
+                      </span>
+                    )}
+                  </td>
                   <td>{formatDate(job.discoveredAt)}</td>
                   <td>
                     <JobStatusBadge status={job.status as JobStatus} />

@@ -75,8 +75,10 @@
   - ~100 vagas por resposta (as mais recentes), não é um histórico completo;
   - `salary_min`/`salary_max` são números **sem moeda**: o conector reproduz o número (ex.: `4000`)
     ou a faixa (`3000–5000`) e **não inventa** símbolo/moeda;
-  - a fonte não informa nível nem tipo de contrato: `contractType` fica `unknown` (as `tags` não
-    são fonte confiável para isso);
+  - a fonte não informa nível nem tipo de contrato: o conector entrega `contractType: unknown` (as
+    `tags` não são fonte confiável para isso). Na coleta, o JobPilot pode classificar o tipo pelo
+    título (ver “Preferências de busca” no README) e grava a origem como `contract_type_source =
+    'title'` — o conector em si continua sem inventar dados;
   - `date` já vem em ISO com fuso (`2026-11-03T16:00:25+00:00`), normalizada para UTC.
 - **Condições de uso (termos da própria API):** vincular de volta com `follow` (sem `nofollow`) e
   mencionar "Remote OK" como fonte; não usar o logo sem permissão (marca registrada).

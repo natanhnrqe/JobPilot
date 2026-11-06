@@ -6,6 +6,23 @@ export type ApplicationStatus =
 export type WorkMode = "remote" | "hybrid" | "onsite" | "unknown";
 export type ContractType = "internship" | "junior" | "mid" | "senior" | "freelance" | "unknown";
 
+/** Tipos que o usuário pode escolher nas preferências de busca (sem "unknown"). */
+export const SEARCH_CONTRACT_TYPES = [
+  "internship",
+  "junior",
+  "mid",
+  "senior",
+  "freelance",
+] as const;
+export type SearchContractType = (typeof SEARCH_CONTRACT_TYPES)[number];
+
+/** GET/PUT /preferences — filtros aplicados na próxima coleta. */
+export interface SearchPreferences {
+  contractTypes: SearchContractType[];
+  includeUnknownContractType: boolean;
+  updatedAt: string;
+}
+
 export interface Job {
   id: number;
   title: string;
@@ -13,6 +30,8 @@ export interface Job {
   location: string | null;
   workMode: WorkMode;
   contractType: ContractType;
+  /** source = a fonte informou; title = inferido do título; user = usuário. */
+  contractTypeSource: "source" | "title" | "user" | "unknown";
   salaryText: string | null;
   descriptionText: string | null;
   sourceUrl: string | null;
