@@ -1,8 +1,8 @@
-# IA no JobPilot — cadastro assistido de vagas
+# IA no JobPilot — vagas e currículo
 
-> Escopo desta página: **Fase 2, etapa 1** (extração de campos de uma vaga para a prévia de
-> cadastro). Análise de compatibilidade com currículo, extração de CV e priorização são Fase 3 e
-> **não existem** neste projeto.
+> Escopo desta página: **Fase 2** (extração de campos de uma vaga para a prévia de cadastro) e
+> **Fase 3, fatia 2** (importação de currículo para o perfil). Análise de compatibilidade e
+> priorização por IA ainda **não existem** neste projeto.
 
 ## 1. Provedor escolhido e por quê
 
@@ -18,8 +18,11 @@ implementação, `OpenAiCompatibleProvider`.
   Rotas HTTP, repositórios SQL e componentes React **não** importam o provedor diretamente — só a
   camada de serviço (`backend/src/services/extraction.ts`).
 
-O conteúdo enviado ao provedor é **apenas** o texto da vaga (limitado a 20 000 caracteres) mais o
-prompt. **Nenhum currículo, credencial, nota pessoal ou dado do banco é enviado.**
+O conteúdo enviado ao provedor é **apenas texto**: o texto da vaga no cadastro assistido (limitado
+a 20 000 caracteres) e o texto extraído do currículo na importação de CV (limitado a 40 000
+caracteres). No caso do CV, o backend lê o PDF/DOCX/TXT localmente e envia somente o texto — o
+arquivo original não é enviado nem armazenado. **Nenhuma credencial, nota pessoal ou dado do banco
+é enviado.**
 
 ## 2. Como obter e configurar a chave
 
@@ -39,7 +42,7 @@ AI_TIMEOUT_MS=60000                     # opcional (default 60 s)
 ```env
 AI_API_KEY=sua-chave-do-google-ai-studio
 AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
-AI_MODEL=gemini-3.8-flash
+AI_MODEL=gemini-3.6-flash
 ```
 
 - O nome do modelo deve ser um dos disponíveis para a sua chave — confira em
@@ -75,7 +78,8 @@ Regras de segurança:
 
 1. **Suíte automatizada (padrão, offline):** `npm test` usa um provedor falso
    (`backend/tests/fakeAi.ts`) — zero rede, zero chave. Cobre extração válida, campos ausentes,
-   JSON inválido, esquema inválido, provedor indisponível, duplicatas, SSRF e HTML.
+   JSON inválido, esquema inválido, provedor indisponível, duplicatas, SSRF, HTML, extração de
+   PDF/DOCX, regra da citação e confirmação de itens inferidos.
    Além do provedor falso, `backend/tests/integration/aiProvider.test.ts` exercita o **provedor
    real** contra um servidor local que emula a API da OpenAI: formato da requisição, 401/403, 429,
    5xx, retentativas (503/429 transitórios e persistente), timeout, conexão recusada e o fluxo
@@ -98,7 +102,7 @@ AI_MODEL=mock-model
 
 | Situação                                              | O que acontece                                                                                       | Usuário vê                                                |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| Sem `AI_API_KEY`                                       | `config.ai = null`; nenhuma chamada externa é feita                                                   | aviso em `/vagas/nova` + `503 AI_UNAVAILABLE` na extração  |
+| Sem `AI_API_KEY`                                       | `config.ai = null`; nenhuma chamada externa é feita                                                   | aviso em `/vagas/nova` e `/perfil` + `503 AI_UNAVAILABLE` na extração |
 | Chave recusada (401/403)                               | erro do provedor convertido                                                                          | `503 AI_UNAVAILABLE` com orientação de revisar `AI_API_KEY` |
 | Cota/limite atingido (429)                             | até 3 tentativas com espera; depois                                                                  | `503 AI_UNAVAILABLE` indicando cota                        |
 | Serviço sobrecarregado (503, ex.: Gemini "model is overloaded") | até 3 tentativas com espera; depois                                                        | `503 AI_UNAVAILABLE` com o motivo do provedor              |
@@ -106,9 +110,11 @@ AI_MODEL=mock-model
 | Resposta fora do esquema ou sem JSON                   | 2 tentativas; depois                                                                                 | `502 AI_INVALID_RESPONSE` com os problemas listados       |
 | Outro erro 5xx do provedor (500/502/504)               | até 3 tentativas; depois                                                                             | `502 AI_ERROR` com status e trecho (limitado)              |
 | Página bloqueada (401/403/429), PDF, muito grande, destino privado | falha **antes** de chamar a IA                                                               | `400/413/415/422 FETCH_ERROR` + orientação de colar o texto |
+| CV em formato não suportado ou base64 inválido          | falha **antes** de chamar a IA                                                                       | `400 VALIDATION_ERROR` com orientação                       |
+| CV sem texto útil (digitalizado)                       | falha **antes** de chamar a IA                                                                       | `422 CV_ERROR` com orientação de aplicar OCR               |
 
 Em **todos** os casos o restante do JobPilot (dashboard, vagas manuais, candidaturas, notas,
-backup/restore) continua funcionando normalmente.
+perfil manual, backup/restore) continua funcionando normalmente.
 
 ## 6. Limitações conhecidas
 
@@ -119,6 +125,65 @@ backup/restore) continua funcionando normalmente.
   o texto manualmente.
 - **A IA não inventa:** campo não identificado vem `null`; a data atual nunca vira `postedAt`;
   inferências aparecem em `extractionNotes` e a confiança é exibida na prévia.
+- **No currículo, a regra é mais estrita:** item sem `source_quote` literal é descartado e
+  inferências só entram depois de confirmação explícita do usuário.
 - **Conteúdo é dado não confiável:** vai ao modelo entre `<<<CONTEUDO_DA_VAGA>>>` com instrução de
   ignorar comandos ali contidos; a extração não tem permissão de gravar no banco.
-- **Sem análise de compatibilidade com currículo** nesta etapa (depende de D2/D4 na especificação).
+- **Sem análise de compatibilidade** entre vaga e perfil nesta etapa (depende de D2/D4 na
+  especificação); o perfil já existe, mas ainda não é comparado automaticamente com as vagas.
+
+## 7. Extração de currículo (Fase 3, fatia 2)
+
+Rotas: `POST /api/v1/profile/cv` (prévia, **não persiste**) e
+`POST /api/v1/profile/cv/confirm` (persiste a versão revisada). O fluxo é sempre
+upload → extração → revisão humana → confirmação.
+
+**Formatos e limites:** PDF, DOCX e TXT; arquivo até 5 MB; texto extraído até 200 000 caracteres,
+dos quais no máximo 40 000 vão para a IA. PDFs digitalizados sem camada de texto são recusados com
+`422 CV_ERROR` e a orientação de aplicar OCR.
+
+**Regra da citação (`source_quote`):** todo item extraído (experiência, formação, habilidade,
+idioma, projeto e dados pessoais) precisa de um trecho literal do CV. O schema aceita itens sem
+citação para não invalidar a resposta inteira, mas o serviço os **descarta** e informa na prévia.
+A IA não pode completar datas, níveis ou qualificações ausentes.
+
+**Itens inferidos:** conclusões que não estão escritas literalmente (ex.: tempo total de
+experiência) vão em `inferred`, com `field`, `value` e `reason`. Eles entram com
+`confirmed: false`; a confirmação do perfil é recusada enquanto qualquer item estiver pendente.
+O usuário pode confirmar ou remover cada um.
+
+**Privacidade:** o arquivo original **não é armazenado**. O backend extrai o texto localmente e o
+banco guarda apenas `raw_cv_text` (texto) e os dados revisados; `cv_file_path` permanece `NULL`.
+O texto do CV é enviado ao provedor de IA somente durante a extração.
+
+**Formato de saída (resumo):**
+
+```jsonc
+{
+  "personal": {
+    "fullName": { "value": "", "source_quote": "" },
+    "email": { "value": "", "source_quote": "" },
+    // phone, location, linkedinUrl, githubUrl, portfolioUrl, summary
+  },
+  "experiences": [
+    {
+      "role": "",
+      "company": "",
+      "start": "YYYY-MM",
+      "end": "YYYY-MM|null",
+      "current": false,
+      "highlights": [""],
+      "source_quote": ""
+    }
+  ],
+  "education": [{ "degree": "", "institution": "", "year": "", "source_quote": "" }],
+  "skills": [{ "name": "", "level": "beginner|intermediate|advanced|null", "source_quote": "" }],
+  "languages": [{ "name": "", "level": "", "source_quote": "" }],
+  "projects": [{ "name": "", "url": "", "description": "", "source_quote": "" }],
+  "inferred": [{ "field": "", "value": "", "reason": "" }]
+}
+```
+
+**Falhas:** formato não suportado ou base64 inválido → `400 VALIDATION_ERROR`; arquivo sem texto
+útil → `422 CV_ERROR`; IA indisponível → `503 AI_UNAVAILABLE`; resposta fora do schema após 2
+tentativas → `502 AI_INVALID_RESPONSE`.

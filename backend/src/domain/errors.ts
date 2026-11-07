@@ -7,6 +7,7 @@ export type ErrorCode =
   | "AI_ERROR"
   | "AI_INVALID_RESPONSE"
   | "FETCH_ERROR"
+  | "CV_ERROR"
   | "BACKUP_ERROR"
   | "RESTORE_ERROR"
   | "INTERNAL_ERROR";

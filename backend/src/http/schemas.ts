@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { paginationQuery } from "./middleware/http.js";
 import { CONTRACT_TYPES as BASE_CONTRACT_TYPES } from "../domain/contractType.js";
+import { PROFILE_WORK_MODES, SKILL_LEVELS } from "../domain/profile.js";
 
 export const WORK_MODES = ["remote", "hybrid", "onsite", "unknown"] as const;
 export const CONTRACT_TYPES = [...BASE_CONTRACT_TYPES, "unknown"] as const;
@@ -98,6 +99,127 @@ export const preferencesSchema = z
   .refine(
     (data) => data.contractTypes !== undefined || data.includeUnknownContractType !== undefined,
     { message: "Informe ao menos uma preferência." },
+  );
+
+const quotedTextSchema = z.object({
+  value: z.string().trim().min(1).max(2000),
+  /** Trecho do CV que comprova o valor; vazio em dados editados manualmente. */
+  sourceQuote: z.string().trim().max(2000).default(""),
+});
+
+const personalFieldSchema = quotedTextSchema.nullable();
+
+/** Perfil revisado pelo usuário (mesmo formato devolvido por POST /profile/cv). */
+export const profileDataSchema = z.object({
+  personal: z.object({
+    fullName: personalFieldSchema,
+    email: personalFieldSchema,
+    phone: personalFieldSchema,
+    location: personalFieldSchema,
+    linkedinUrl: personalFieldSchema,
+    githubUrl: personalFieldSchema,
+    portfolioUrl: personalFieldSchema,
+    summary: personalFieldSchema,
+  }),
+  experiences: z
+    .array(
+      z.object({
+        role: z.string().trim().min(1).max(200),
+        company: z.string().trim().max(200).nullable(),
+        start: z.string().trim().max(20).nullable(),
+        end: z.string().trim().max(20).nullable(),
+        current: z.boolean(),
+        highlights: z.array(z.string().trim().max(1000)).max(20),
+        sourceQuote: z.string().trim().max(2000).default(""),
+      }),
+    )
+    .max(50),
+  education: z
+    .array(
+      z.object({
+        degree: z.string().trim().max(200),
+        institution: z.string().trim().max(200),
+        year: z.string().trim().max(40).nullable(),
+        sourceQuote: z.string().trim().max(2000).default(""),
+      }),
+    )
+    .max(50),
+  skills: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(100),
+        level: z.enum(SKILL_LEVELS).nullable(),
+        sourceQuote: z.string().trim().max(2000).default(""),
+      }),
+    )
+    .max(100),
+  languages: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(100),
+        level: z.string().trim().max(100).nullable(),
+        sourceQuote: z.string().trim().max(2000).default(""),
+      }),
+    )
+    .max(30),
+  projects: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(200),
+        url: z.string().trim().max(2000).nullable(),
+        description: z.string().trim().max(2000).nullable(),
+        sourceQuote: z.string().trim().max(2000).default(""),
+      }),
+    )
+    .max(50),
+  inferred: z
+    .array(
+      z.object({
+        field: z.string().trim().min(1).max(100),
+        value: z.string().trim().min(1).max(300),
+        reason: z.string().trim().min(1).max(500),
+        confirmed: z.boolean(),
+      }),
+    )
+    .max(50),
+});
+
+export const profilePreferencesSchema = z.object({
+  desiredRoles: z.array(z.string().trim().min(1).max(100)).max(20),
+  workModes: z.array(z.enum(PROFILE_WORK_MODES)).max(PROFILE_WORK_MODES.length),
+  locations: z.array(z.string().trim().min(1).max(100)).max(20),
+  salaryExpectation: z.string().trim().max(200).nullable(),
+  contractTypes: z.array(z.enum(BASE_CONTRACT_TYPES)).max(BASE_CONTRACT_TYPES.length),
+});
+
+export const profileAnswersSchema = z.record(
+  z.string().min(1).max(100),
+  z.string().trim().max(2000),
+);
+
+export const cvUploadSchema = z.object({
+  fileName: z.string().trim().min(1).max(255),
+  /** Conteúdo do arquivo em base64 (limite de 5 MB validado após decodificar). */
+  contentBase64: z.string().min(1).max(8_000_000),
+});
+
+export const confirmProfileSchema = z.object({
+  rawCvText: z.string().trim().min(1).max(200_000),
+  profile: profileDataSchema,
+  preferences: profilePreferencesSchema.optional(),
+  answers: profileAnswersSchema.optional(),
+});
+
+export const updateProfileSchema = z
+  .object({
+    profile: profileDataSchema.optional(),
+    preferences: profilePreferencesSchema.optional(),
+    answers: profileAnswersSchema.optional(),
+  })
+  .refine(
+    (data) =>
+      data.profile !== undefined || data.preferences !== undefined || data.answers !== undefined,
+    { message: "Informe ao menos uma parte do perfil para salvar." },
   );
 
 export const restoreSchema = z.object({

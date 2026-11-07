@@ -252,6 +252,128 @@ export interface SourceInfo {
   updatedAt: string;
 }
 
+/** Perfil profissional — texto extraído do CV + trecho que o comprova. */
+export interface QuotedText {
+  value: string;
+  sourceQuote: string;
+}
+
+export type ProfileWorkMode = "remote" | "hybrid" | "onsite";
+export type ProfileSkillLevel = "beginner" | "intermediate" | "advanced";
+
+export interface ProfilePersonal {
+  fullName: QuotedText | null;
+  email: QuotedText | null;
+  phone: QuotedText | null;
+  location: QuotedText | null;
+  linkedinUrl: QuotedText | null;
+  githubUrl: QuotedText | null;
+  portfolioUrl: QuotedText | null;
+  summary: QuotedText | null;
+}
+
+export interface ProfileExperience {
+  role: string;
+  company: string | null;
+  start: string | null;
+  end: string | null;
+  current: boolean;
+  highlights: string[];
+  sourceQuote: string;
+}
+
+export interface ProfileEducation {
+  degree: string;
+  institution: string;
+  year: string | null;
+  sourceQuote: string;
+}
+
+export interface ProfileSkill {
+  name: string;
+  level: ProfileSkillLevel | null;
+  sourceQuote: string;
+}
+
+export interface ProfileLanguage {
+  name: string;
+  level: string | null;
+  sourceQuote: string;
+}
+
+export interface ProfileProject {
+  name: string;
+  url: string | null;
+  description: string | null;
+  sourceQuote: string;
+}
+
+export interface InferredItem {
+  field: string;
+  value: string;
+  reason: string;
+  confirmed: boolean;
+}
+
+export interface ProfileData {
+  personal: ProfilePersonal;
+  experiences: ProfileExperience[];
+  education: ProfileEducation[];
+  skills: ProfileSkill[];
+  languages: ProfileLanguage[];
+  projects: ProfileProject[];
+  inferred: InferredItem[];
+}
+
+export interface ProfilePreferences {
+  desiredRoles: string[];
+  workModes: ProfileWorkMode[];
+  locations: string[];
+  salaryExpectation: string | null;
+  contractTypes: SearchContractType[];
+}
+
+export type ProfileAnswers = Record<string, string>;
+
+/** GET/PUT /profile — perfil salvo (a versão 0 indica que nada foi salvo). */
+export interface ProfileResponse {
+  version: number;
+  rawCvText: string | null;
+  profile: ProfileData;
+  preferences: ProfilePreferences;
+  answers: ProfileAnswers;
+  hasProfile: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+/** POST /profile/cv — prévia, NÃO persiste. */
+export interface CvExtractionPreview {
+  profile: ProfileData;
+  rawText: string;
+  warnings: string[];
+  discarded: number;
+  meta: {
+    provider: string;
+    model: string;
+    fileName: string;
+    format: "pdf" | "docx" | "txt";
+    contentLength: number;
+  };
+}
+
+export const PROFILE_WORK_MODE_LABELS: Record<ProfileWorkMode, string> = {
+  remote: "Remoto",
+  hybrid: "Híbrido",
+  onsite: "Presencial",
+};
+
+export const PROFILE_SKILL_LEVEL_LABELS: Record<ProfileSkillLevel, string> = {
+  beginner: "Básico",
+  intermediate: "Intermediário",
+  advanced: "Avançado",
+};
+
 /** Transições permitidas — espelho das máquinas de estado do backend (validação final é sempre no servidor). */
 export const JOB_TRANSITIONS: Record<JobStatus, JobStatus[]> = {
   new: ["prioritized", "discarded", "closed"],

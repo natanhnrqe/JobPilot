@@ -9,6 +9,7 @@ import Executions from "./pages/Executions";
 import JobDetail from "./pages/JobDetail";
 import Applications from "./pages/Applications";
 import ApplicationDetail from "./pages/ApplicationDetail";
+import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
 import "./styles.css";
 
@@ -24,6 +25,7 @@ const router = createBrowserRouter([
       { path: "/execucoes", element: <Executions /> },
       { path: "/candidaturas", element: <Applications /> },
       { path: "/candidaturas/:id", element: <ApplicationDetail /> },
+      { path: "/perfil", element: <ProfilePage /> },
       { path: "/configuracoes", element: <SettingsPage /> },
     ],
   },

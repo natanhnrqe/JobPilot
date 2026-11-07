@@ -12,6 +12,7 @@ import { dashboardRouter } from "./routes/dashboard.js";
 import { extractionsRouter } from "./routes/extractions.js";
 import { runsRouter, sourcesRouter } from "./routes/runs.js";
 import { preferencesRouter } from "./routes/preferences.js";
+import { profileRouter } from "./routes/profile.js";
 import { systemRouter } from "./routes/system.js";
 import type { ServiceContext } from "../services/context.js";
 
@@ -42,7 +43,8 @@ export function createServer(
 
   const app = express();
   app.disable("x-powered-by");
-  app.use(express.json({ limit: "1mb" }));
+  // 10 MB: o upload do CV vai em base64 no JSON (limite real do arquivo: 5 MB).
+  app.use(express.json({ limit: "10mb" }));
   app.use(requestLogger(logger));
 
   // API — apenas localhost (Seção 4: auth local simples por bind 127.0.0.1).
@@ -56,6 +58,7 @@ export function createServer(
   api.use("/runs", runsRouter(ctx));
   api.use("/sources", sourcesRouter(ctx));
   api.use("/preferences", preferencesRouter(ctx));
+  api.use("/profile", profileRouter(ctx));
   api.use("/", systemRouter(ctx));
   app.use("/api/v1", api);
 

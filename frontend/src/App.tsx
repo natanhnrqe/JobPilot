@@ -21,6 +21,7 @@ export default function App() {
           </NavLink>
           <NavLink to="/vagas">Vagas</NavLink>
           <NavLink to="/candidaturas">Candidaturas</NavLink>
+          <NavLink to="/perfil">Perfil</NavLink>
           <NavLink to="/execucoes">Execuções</NavLink>
           <NavLink to="/configuracoes">Configurações</NavLink>
         </nav>

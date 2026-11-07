@@ -1,6 +1,6 @@
 # JobPilot
 
-Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e candidaturas — dashboard com vagas e candidaturas, status validados, histórico e **cadastro assistido por IA** (Fase 2, etapa 1).
+Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e candidaturas — dashboard com vagas e candidaturas, status validados, histórico, **cadastro assistido por IA** e **perfil profissional com importação de currículo**.
 
 > 📘 Especificação completa: [`docs/ESPECIFICACAO-TECNICA.md`](docs/ESPECIFICACAO-TECNICA.md) · Escopo funcional: [`docs/ESCOPO.md`](docs/ESCOPO.md) · IA: [`docs/IA.md`](docs/IA.md)
 
@@ -43,14 +43,23 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 - ✅ Padrão inicial: estágio, júnior/trainee e freelance, sem vagas de nível desconhecido — ajustável a qualquer momento
 - ✅ **Sem IA nesta etapa**: os filtros são determinísticos e não consomem chave nem créditos
 
-✅ **191 testes automatizados** (domínio, API, extração, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
+**Fase 3 — perfil profissional e currículo (fatia 2)**
 
-**Não implementado** (por design, por enquanto): análise de compatibilidade com currículo, Playwright/automação de envio, upload de currículo e lembretes.
+- ✅ **Página Perfil** (`/perfil`): importe o currículo em **PDF, DOCX ou TXT**, veja a prévia extraída pela IA, corrija o que precisar e confirme
+- ✅ **Regra da citação**: todo item extraído precisa de um trecho literal do CV (`source_quote`); sem citação, o item é descartado — a IA não inventa qualificações
+- ✅ **Itens inferidos** (ex.: tempo de experiência calculado) só entram depois de confirmação explícita, item a item
+- ✅ **Privacidade**: o arquivo original do CV **não é armazenado**; ficam no banco local apenas o texto extraído e os dados revisados
+- ✅ **Edição manual** de dados pessoais, experiências, formação, habilidades, idiomas, projetos, preferências profissionais e respostas padrão para formulários
+- ✅ Rotas `GET/PUT /api/v1/profile`, `POST /api/v1/profile/cv` (prévia, não persiste) e `POST /api/v1/profile/cv/confirm`
+
+✅ **217 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, perfil, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
+
+**Não implementado** (por design, por enquanto): análise de compatibilidade entre vaga e perfil, Playwright/automação de envio e lembretes.
 
 ## Requisitos
 
 - **Node.js ≥ 22.5** (testado no Node 24) — usa o módulo nativo `node:sqlite`
-- Windows (testado) — deve funcionar também em Linux/macOS por não ter dependências nativas
+- Windows (testado) — deve funcionar também em Linux/macOS (a leitura de PDF usa binários pré-compilados do `@napi-rs/canvas`)
 - Navegador atual
 
 ## Instalação
@@ -126,6 +135,25 @@ Em **Configurações → Preferências de busca** você escolhe quais tipos de c
 
 As rotas são `GET /api/v1/preferences` e `PUT /api/v1/preferences`.
 
+## Perfil profissional e importação de currículo
+
+Em **Perfil** (`/perfil`) você pode importar o currículo em **PDF, DOCX ou TXT** (até 5 MB) ou preencher o perfil manualmente. O fluxo de importação é sempre:
+
+1. **Upload** do arquivo;
+2. **Extração por IA** com prévia editável — nada é gravado ainda;
+3. **Revisão humana** dos dados e confirmação dos itens inferidos;
+4. **Confirmação** (`POST /profile/cv/confirm`), que só então salva o perfil.
+
+Regras importantes:
+
+- **A IA não inventa**: todo item extraído precisa de um trecho literal do CV (`source_quote`). Itens sem citação são descartados e aparecem nos avisos da prévia.
+- **Itens inferidos** (ex.: tempo total de experiência) vêm marcados e exigem confirmação item a item; a confirmação é recusada enquanto houver pendências.
+- **O arquivo original não é retido**: por privacidade, o banco guarda apenas o texto extraído (`raw_cv_text`) e os dados revisados. `cv_file_path` permanece vazio.
+- **PDFs digitalizados** sem camada de texto precisam de OCR antes da importação; o JobPilot avisa quando não há texto suficiente.
+- **Sem IA configurada**, a importação fica indisponível (`503`), mas o perfil pode ser preenchido e salvo manualmente.
+
+As rotas são `GET /api/v1/profile`, `PUT /api/v1/profile`, `POST /api/v1/profile/cv` e `POST /api/v1/profile/cv/confirm`.
+
 ## Página de Execuções
 
 Com o servidor rodando, abra **<http://localhost:5173/execucoes>** em desenvolvimento (`npm run dev`) ou **<http://127.0.0.1:3000/execucoes>** com a interface compilada (`npm start`), ou clique em **Execuções** no menu. A página mostra:
@@ -179,7 +207,7 @@ Apagar a pasta `data/` reinicia a aplicação vazia (os backups são perdidos ju
 ```
 backend/    API HTTP (Express + zod), domínio (máquinas de estado), repositórios SQL,
             migrações em backend/migrations/, testes em backend/tests/
-frontend/   React + TypeScript (Vite), páginas: Dashboard, Vagas, Candidaturas, Configurações
+frontend/   React + TypeScript (Vite), páginas: Dashboard, Vagas, Candidaturas, Perfil, Execuções, Configurações
 docs/       ESCOPO.md, ESPECIFICACAO-TECNICA.md, INSTALACAO.md, BACKUP-RESTORE.md, FONTES.md, IA.md
 data/       banco, backups e logs (não versionado)
 ```
@@ -187,7 +215,7 @@ data/       banco, backups e logs (não versionado)
 ## Próximos marcos (resumo da especificação)
 
 1. **Fase 2** — coleta automática de vagas de fontes verificadas + agendamento às 18:00
-2. **Fase 3** — preferências de busca (fatia 1 concluída) e IA para análise de compatibilidade (nunca inventa qualificações)
+2. **Fase 3** — preferências de busca, perfil profissional com importação de CV (fatias 1 e 2 concluídas) e IA para análise de compatibilidade (nunca inventa qualificações)
 3. **Fase 4** — candidaturas automatizadas com confirmação por candidatura, portais verificados e CAPTCHA sempre encaminhado ao humano
 4. **Fase 5** — lembretes de acompanhamento e consolidação
 
