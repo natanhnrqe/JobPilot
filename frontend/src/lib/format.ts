@@ -1,6 +1,7 @@
 /** Rótulos e formatação em pt-BR. */
 
 import type {
+  AiUsageKind,
   AnalysisConfidence,
   ApplicationStatus,
   ContractType,
@@ -81,6 +82,12 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   "application.deleted": "Candidatura excluída",
   "application.restored": "Candidatura restaurada",
   "note.added": "Nota adicionada",
+};
+
+export const AI_USAGE_KIND_LABELS: Record<AiUsageKind, string> = {
+  extraction: "Extração de vagas",
+  cv: "Importação de currículo",
+  analysis: "Análise de compatibilidade",
 };
 
 export const ANALYSIS_CONFIDENCE_LABELS: Record<AnalysisConfidence, string> = {

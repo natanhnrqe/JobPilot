@@ -34,6 +34,7 @@ export function extractionsRouter(ctx: ServiceContext): Router {
       enabled: ctx.ai !== null,
       model: ctx.ai?.model ?? null,
       provider: ctx.ai?.name ?? null,
+      dailyBudgetTokens: ctx.config.aiDailyBudget,
     });
   });
 

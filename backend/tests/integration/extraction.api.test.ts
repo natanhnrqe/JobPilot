@@ -45,7 +45,12 @@ describe("Cadastro assistido por IA — SEM chave configurada", () => {
   it("GET /extractions/status informa enabled=false", async () => {
     const res = await request(server.app).get("/api/v1/extractions/status");
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ enabled: false, model: null, provider: null });
+    expect(res.body).toEqual({
+      enabled: false,
+      model: null,
+      provider: null,
+      dailyBudgetTokens: 0,
+    });
   });
 
   it("POST /extractions/from-text responde 503 com orientação clara", async () => {
@@ -82,7 +87,12 @@ describe("Cadastro assistido por IA — com provedor falso (offline)", () => {
 
   it("status informa enabled=true e o modelo em uso", async () => {
     const res = await request(server.app).get("/api/v1/extractions/status");
-    expect(res.body).toEqual({ enabled: true, model: "fake-model", provider: "fake" });
+    expect(res.body).toEqual({
+      enabled: true,
+      model: "fake-model",
+      provider: "fake",
+      dailyBudgetTokens: 0,
+    });
   });
 
   it("extrai rascunho completo a partir de texto colado (sem persistir)", async () => {

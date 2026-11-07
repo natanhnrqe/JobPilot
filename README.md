@@ -52,9 +52,9 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 - ✅ **Edição manual** de dados pessoais, experiências, formação, habilidades, idiomas, projetos, preferências profissionais e respostas padrão para formulários
 - ✅ Rotas `GET/PUT /api/v1/profile`, `POST /api/v1/profile/cv` (prévia, não persiste) e `POST /api/v1/profile/cv/confirm`
 
-✅ **231 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, análise de compatibilidade, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, perfil, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
+✅ **239 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, análise de compatibilidade, orçamento diário de IA, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, perfil, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
 
-**Não implementado** (por design, por enquanto): orçamento diário de IA (tarefa 3.4), análise em lote, Playwright/automação de envio e lembretes.
+**Não implementado** (por design, por enquanto): análise em lote, Playwright/automação de envio e lembretes.
 
 ## Requisitos
 
@@ -164,6 +164,15 @@ As rotas são `GET /api/v1/profile`, `PUT /api/v1/profile`, `POST /api/v1/profil
 - ✅ Sem perfil preenchido, sem descrição suficiente ou sem `AI_API_KEY`, a análise é recusada com mensagem clara; o restante do JobPilot continua funcionando
 - ✅ Rota `POST /api/v1/jobs/:id/analysis` (cria uma nova versão; o histórico vem em `GET /api/v1/jobs/:id`)
 
+**Fase 3 — orçamento diário de IA (fatia 4)**
+
+- ✅ **Teto diário de tokens** configurável em `AI_DAILY_BUDGET` (0 = sem limite), somando entrada + saída de **todas** as chamadas: extração de vagas, importação de currículo e análise de compatibilidade
+- ✅ **Bloqueio antes de gastar**: ao atingir o teto, a próxima chamada é recusada com `429 AI_BUDGET_EXCEEDED` e nada é enviado ao provedor; o aviso fica visível na UI
+- ✅ **Registro por chamada** em `ai_usage`: tipo, modelo, tokens de entrada/saída, data e marcação de estimativa quando o provedor não informa o consumo
+- ✅ **Uso visível em Configurações**: tokens usados/restantes no dia, barra de progresso e detalhamento por tipo; o detalhe da vaga também avisa e desabilita o botão quando o teto foi atingido
+- ✅ **Vira o dia** à meia-noite local (mesmo fuso da tarefa das 18:00) — o contador zera sozinho
+- ✅ Rota `GET /api/v1/ai/usage` (somente leitura)
+
 ## Página de Execuções
 
 Com o servidor rodando, abra **<http://localhost:5173/execucoes>** em desenvolvimento (`npm run dev`) ou **<http://127.0.0.1:3000/execucoes>** com a interface compilada (`npm start`), ou clique em **Execuções** no menu. A página mostra:
@@ -225,7 +234,7 @@ data/       banco, backups e logs (não versionado)
 ## Próximos marcos (resumo da especificação)
 
 1. **Fase 2** — coleta automática de vagas de fontes verificadas + agendamento às 18:00
-2. **Fase 3** — preferências de busca, perfil profissional com importação de CV e análise de compatibilidade por IA (fatias 1, 2 e 3 concluídas; falta o teto diário de custo, tarefa 3.4)
+2. **Fase 3** — preferências de busca, perfil profissional com importação de CV, análise de compatibilidade por IA e teto diário de custo (fatias 1 a 4 concluídas)
 3. **Fase 4** — candidaturas automatizadas com confirmação por candidatura, portais verificados e CAPTCHA sempre encaminhado ao humano
 4. **Fase 5** — lembretes de acompanhamento e consolidação
 

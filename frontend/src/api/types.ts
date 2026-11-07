@@ -196,6 +196,27 @@ export interface ExtractionStatus {
   enabled: boolean;
   model: string | null;
   provider: string | null;
+  /** Teto diário em tokens (0 = sem limite). */
+  dailyBudgetTokens: number;
+}
+
+export type AiUsageKind = "extraction" | "cv" | "analysis";
+
+export interface AiUsageTotals {
+  calls: number;
+  tokensIn: number;
+  tokensOut: number;
+  totalTokens: number;
+  estimatedCalls: number;
+}
+
+/** GET /ai/usage — consumo de IA do dia local corrente. */
+export interface AiUsage extends AiUsageTotals {
+  date: string;
+  budgetTokens: number;
+  remainingTokens: number | null;
+  exceeded: boolean;
+  byKind: Record<AiUsageKind, AiUsageTotals>;
 }
 
 /** Rascunho devolvido pela extração: campos não identificados vêm null. */

@@ -16,6 +16,7 @@ import { getJobRow } from "../repositories/jobs.js";
 import { getProfile } from "../repositories/profile.js";
 import { insertAnalysis, toAnalysisDto, type JobAnalysisDto } from "../repositories/analyses.js";
 import { recordEvent } from "../repositories/events.js";
+import { completeWithBudget } from "./aiUsage.js";
 import type { ServiceContext } from "./context.js";
 
 /**
@@ -74,6 +75,7 @@ export async function analyzeJob(ctx: ServiceContext, jobId: number): Promise<Jo
   };
 
   const { data, raw, tokensIn, tokensOut } = await analyzeViaAi(
+    ctx,
     provider,
     profileInput,
     stored.preferences,
@@ -123,6 +125,7 @@ function requireProvider(ctx: ServiceContext): AiProvider {
 
 /** Pede a análise ao provedor, valida com zod e re-tenta uma vez em resposta inválida. */
 async function analyzeViaAi(
+  ctx: ServiceContext,
   provider: AiProvider,
   profile: unknown,
   preferences: unknown,
@@ -134,7 +137,13 @@ async function analyzeViaAi(
   for (let attempt = 1; attempt <= 2; attempt++) {
     let completion: AiCompletion;
     try {
-      completion = await provider.completeJson(ANALYSIS_SYSTEM_PROMPT, userPrompt);
+      completion = await completeWithBudget(
+        ctx,
+        provider,
+        "analysis",
+        ANALYSIS_SYSTEM_PROMPT,
+        userPrompt,
+      );
     } catch (err) {
       if (err instanceof AppError) throw err;
       throw new AppError(

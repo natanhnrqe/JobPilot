@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import type {
+  AiUsage,
   ApplicationStatus,
   ExtractionStatus,
   JobAnalysis,
@@ -33,6 +34,7 @@ export default function JobDetail() {
   const navigate = useNavigate();
   const { data: job, error, loading, reload } = useFetch<JobDetail>(`/jobs/${jobId}`);
   const { data: aiStatus } = useFetch<ExtractionStatus>("/extractions/status");
+  const { data: aiUsage, reload: reloadUsage } = useFetch<AiUsage>("/ai/usage");
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<JobDetail> | null>(null);
@@ -52,6 +54,7 @@ export default function JobDetail() {
     try {
       await fn();
       reload();
+      reloadUsage();
     } catch (err) {
       setActionError(errorMessage(err));
     } finally {
@@ -311,12 +314,26 @@ export default function JobDetail() {
             )}
             <button
               onClick={analyzeCompatibility}
-              disabled={busy || aiStatus?.enabled === false || job.deletedAt !== null}
+              disabled={
+                busy ||
+                aiStatus?.enabled === false ||
+                job.deletedAt !== null ||
+                aiUsage?.exceeded === true
+              }
             >
               {job.analyses.length > 0 ? "Analisar novamente" : "Analisar com IA"}
             </button>
           </div>
         </div>
+
+        {aiUsage?.exceeded && (
+          <div className="alert alert-warn">
+            Teto diário de IA atingido ({aiUsage.totalTokens.toLocaleString("pt-BR")} de{" "}
+            {aiUsage.budgetTokens.toLocaleString("pt-BR")} tokens em {aiUsage.date}). As chamadas de
+            IA ficam pausadas até a virada do dia; ajuste <code>AI_DAILY_BUDGET</code> no{" "}
+            <code>.env</code> para liberar mais.
+          </div>
+        )}
 
         {job.analyses.length === 0 ? (
           <p className="muted">

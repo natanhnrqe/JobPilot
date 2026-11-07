@@ -852,6 +852,14 @@ code {
   color: #92400e;
 }
 
+/* Uso e orçamento diário de IA */
+.usage-bar {
+  width: 100%;
+  height: 10px;
+  margin: 6px 0 16px;
+  accent-color: var(--primary);
+}
+
 @media (max-width: 720px) {
   .analysis-head {
     flex-direction: column;

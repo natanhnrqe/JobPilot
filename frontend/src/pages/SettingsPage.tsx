@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type {
+  AiUsage,
   BackupItem,
   RestoreResult,
   SearchContractType,
@@ -9,12 +10,18 @@ import type {
 } from "../api/types";
 import { SEARCH_CONTRACT_TYPES } from "../api/types";
 import { useFetch, errorMessage } from "../lib/useFetch";
-import { CONTRACT_TYPE_LABELS, formatBytes, formatDateTime } from "../lib/format";
+import {
+  AI_USAGE_KIND_LABELS,
+  CONTRACT_TYPE_LABELS,
+  formatBytes,
+  formatDateTime,
+} from "../lib/format";
 
 export default function SettingsPage() {
   const settings = useFetch<Settings>("/settings");
   const backups = useFetch<{ items: BackupItem[] }>("/backups");
   const preferences = useFetch<SearchPreferences>("/preferences");
+  const aiUsage = useFetch<AiUsage>("/ai/usage");
 
   const [displayName, setDisplayName] = useState("");
   const [timezone, setTimezoneValue] = useState("");
@@ -47,6 +54,7 @@ export default function SettingsPage() {
       settings.reload();
       backups.reload();
       preferences.reload();
+      aiUsage.reload();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -171,6 +179,82 @@ export default function SettingsPage() {
           O Remote OK não informa nível. Com o filtro estrito (sem “sem nível informado”), nenhuma
           vaga dele entra — a classificação pelo título é o que pode incluí-las.
         </p>
+      </section>
+
+      <section className="panel">
+        <div className="page-head">
+          <h2>Uso de IA hoje</h2>
+          <button className="secondary" onClick={() => aiUsage.reload()} disabled={aiUsage.loading}>
+            Atualizar
+          </button>
+        </div>
+        {aiUsage.error && <div className="alert alert-error">{aiUsage.error.message}</div>}
+        {aiUsage.data && (
+          <>
+            {aiUsage.data.budgetTokens > 0 ? (
+              <>
+                <p>
+                  <strong>{aiUsage.data.totalTokens.toLocaleString("pt-BR")}</strong> de{" "}
+                  <strong>{aiUsage.data.budgetTokens.toLocaleString("pt-BR")}</strong> tokens usados
+                  em {aiUsage.data.date}.
+                  {aiUsage.data.exceeded
+                    ? " O teto diário foi atingido."
+                    : ` Restam ${(aiUsage.data.remainingTokens ?? 0).toLocaleString("pt-BR")}.`}
+                </p>
+                <progress
+                  className="usage-bar"
+                  value={Math.min(aiUsage.data.totalTokens, aiUsage.data.budgetTokens)}
+                  max={aiUsage.data.budgetTokens}
+                />
+              </>
+            ) : (
+              <p className="muted">
+                Sem teto diário configurado (<code>AI_DAILY_BUDGET=0</code>). O uso continua sendo
+                registrado.
+              </p>
+            )}
+            {aiUsage.data.exceeded && (
+              <div className="alert alert-warn">
+                Teto diário de IA atingido: as chamadas de IA estão pausadas até a virada do dia.
+                Ajuste <code>AI_DAILY_BUDGET</code> no <code>.env</code> para liberar mais.
+              </div>
+            )}
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Tipo de chamada</th>
+                  <th>Chamadas</th>
+                  <th>Tokens de entrada</th>
+                  <th>Tokens de saída</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(
+                  Object.keys(AI_USAGE_KIND_LABELS) as Array<keyof typeof AI_USAGE_KIND_LABELS>
+                ).map((kind) => {
+                  const item = aiUsage.data!.byKind[kind];
+                  return (
+                    <tr key={kind}>
+                      <td>{AI_USAGE_KIND_LABELS[kind]}</td>
+                      <td>{item.calls}</td>
+                      <td>{item.tokensIn.toLocaleString("pt-BR")}</td>
+                      <td>{item.tokensOut.toLocaleString("pt-BR")}</td>
+                      <td>{item.totalTokens.toLocaleString("pt-BR")}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p className="muted small">
+              A contagem soma tokens de entrada e saída de todas as chamadas (extração de vagas,
+              currículo e análise). Quando o provedor não informa o consumo, o JobPilot estima ≈4
+              caracteres por token e marca a chamada como estimada
+              {aiUsage.data.estimatedCalls > 0 ? ` (${aiUsage.data.estimatedCalls} neste dia)` : ""}
+              . O teto é aplicado antes de cada chamada; ao atingi-lo, nada é enviado ao provedor.
+            </p>
+          </>
+        )}
       </section>
 
       <section className="panel">

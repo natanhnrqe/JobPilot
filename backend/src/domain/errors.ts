@@ -6,6 +6,7 @@ export type ErrorCode =
   | "AI_UNAVAILABLE"
   | "AI_ERROR"
   | "AI_INVALID_RESPONSE"
+  | "AI_BUDGET_EXCEEDED"
   | "FETCH_ERROR"
   | "CV_ERROR"
   | "BACKUP_ERROR"

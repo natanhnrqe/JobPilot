@@ -5,6 +5,7 @@ import { EXTRACTION_SYSTEM_PROMPT, buildExtractionUserPrompt } from "../ai/promp
 import { findPossibleDuplicates, type DuplicateCandidate } from "../domain/dedupe.js";
 import { fetchJobPage, type SafeFetchOptions } from "../fetch/safeFetch.js";
 import { htmlToText } from "../fetch/htmlText.js";
+import { completeWithBudget } from "./aiUsage.js";
 import type { ServiceContext } from "./context.js";
 
 export interface JobDraft {
@@ -48,6 +49,7 @@ function requireProvider(ctx: ServiceContext): AiProvider {
 
 /** Pede a extração ao provedor, valida com zod e re-tenta uma vez em resposta inválida. */
 async function extractViaAi(
+  ctx: ServiceContext,
   provider: AiProvider,
   content: string,
   urlHint: string | null,
@@ -58,7 +60,13 @@ async function extractViaAi(
   for (let attempt = 1; attempt <= 2; attempt++) {
     let completion: AiCompletion;
     try {
-      completion = await provider.completeJson(EXTRACTION_SYSTEM_PROMPT, userPrompt);
+      completion = await completeWithBudget(
+        ctx,
+        provider,
+        "extraction",
+        EXTRACTION_SYSTEM_PROMPT,
+        userPrompt,
+      );
     } catch (err) {
       // Falha do provedor (rede, cota, chave) não é retentada aqui: vira 503 claro.
       if (err instanceof AppError) throw err;
@@ -133,7 +141,12 @@ export async function extractJobFromText(
   const content = input.text.trim();
   const urlHint = input.sourceUrl?.trim() || null;
 
-  const { extracted } = await extractViaAi(provider, content.slice(0, MAX_CONTENT_CHARS), urlHint);
+  const { extracted } = await extractViaAi(
+    ctx,
+    provider,
+    content.slice(0, MAX_CONTENT_CHARS),
+    urlHint,
+  );
   const draft = toDraft(extracted, urlHint);
 
   const warnings: string[] = [];
@@ -182,6 +195,7 @@ export async function extractJobFromUrl(
   }
 
   const { extracted } = await extractViaAi(
+    ctx,
     provider,
     text.slice(0, MAX_CONTENT_CHARS),
     page.finalUrl,

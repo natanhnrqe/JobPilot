@@ -14,6 +14,7 @@ import {
 } from "../domain/profile.js";
 import { getProfile, saveProfile, type StoredProfile } from "../repositories/profile.js";
 import { extractCvText, type CvFormat } from "./cvText.js";
+import { completeWithBudget } from "./aiUsage.js";
 import type { ServiceContext } from "./context.js";
 
 /** Limite do texto enviado à IA (o texto completo fica disponível para revisão). */
@@ -70,6 +71,7 @@ export async function extractProfileFromCv(
   const cv = await extractCvText(input);
 
   const { extracted } = await extractCvViaAi(
+    ctx,
     provider,
     cv.text.slice(0, MAX_CV_TEXT_FOR_AI),
     input.fileName,
@@ -98,6 +100,7 @@ export async function extractProfileFromCv(
 
 /** Pede a extração ao provedor, valida com zod e re-tenta uma vez em resposta inválida. */
 async function extractCvViaAi(
+  ctx: ServiceContext,
   provider: AiProvider,
   text: string,
   fileName: string,
@@ -108,7 +111,13 @@ async function extractCvViaAi(
   for (let attempt = 1; attempt <= 2; attempt++) {
     let completion: AiCompletion;
     try {
-      completion = await provider.completeJson(CV_EXTRACTION_SYSTEM_PROMPT, userPrompt);
+      completion = await completeWithBudget(
+        ctx,
+        provider,
+        "cv",
+        CV_EXTRACTION_SYSTEM_PROMPT,
+        userPrompt,
+      );
     } catch (err) {
       if (err instanceof AppError) throw err;
       throw new AppError(

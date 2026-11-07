@@ -8,6 +8,9 @@ export interface FakeAiOptions {
   /** Respostas devolvidas em sequência (a última repete). Pode ser função. */
   responses: string[] | ((call: number, system: string, user: string) => string);
   model?: string;
+  /** Tokens informados pelo provedor (quando omitidos, o serviço estima). */
+  tokensIn?: number;
+  tokensOut?: number;
   /** Se definido, toda chamada lança este erro (provedor indisponível). */
   failWith?: Error;
 }
@@ -29,7 +32,12 @@ export function makeFakeAi(options: FakeAiOptions): FakeAiProvider {
         typeof options.responses === "function"
           ? options.responses(calls.length, system, user)
           : options.responses[Math.min(calls.length - 1, options.responses.length - 1)];
-      return { text, model: this.model };
+      return {
+        text,
+        model: this.model,
+        tokensIn: options.tokensIn,
+        tokensOut: options.tokensOut,
+      };
     },
   };
 }

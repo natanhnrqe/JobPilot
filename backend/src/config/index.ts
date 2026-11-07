@@ -14,6 +14,8 @@ const EnvSchema = z.object({
   AI_BASE_URL: z.string().default("https://api.openai.com/v1"),
   AI_MODEL: z.string().default("gpt-4o-mini"),
   AI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(300000).default(60000),
+  // Teto diário em tokens (entrada + saída). 0 = sem limite.
+  AI_DAILY_BUDGET: z.coerce.number().int().min(0).default(0),
 });
 
 export interface AiConfig {
@@ -35,6 +37,8 @@ export interface AppConfig {
   backupsDir: string;
   logsDir: string;
   isProd: boolean;
+  /** Teto diário de tokens de IA (0 = sem limite). Vale para todas as chamadas. */
+  aiDailyBudget: number;
   /** Presente somente quando AI_API_KEY está configurada. */
   ai: AiConfig | null;
 }
@@ -114,6 +118,7 @@ export function loadConfig(
     backupsDir: path.join(dataDir, "backups"),
     logsDir: path.join(dataDir, "logs"),
     isProd: e.NODE_ENV === "production",
+    aiDailyBudget: e.AI_DAILY_BUDGET,
     ai: e.AI_API_KEY
       ? {
           apiKey: e.AI_API_KEY,

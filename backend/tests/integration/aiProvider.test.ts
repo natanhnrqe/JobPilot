@@ -251,6 +251,7 @@ describe("Fluxo completo com o provedor REAL (HTTP compatível com OpenAI)", () 
         enabled: true,
         model: "modelo-de-teste",
         provider: "openai-compatible",
+        dailyBudgetTokens: 0,
       });
 
       const extraction = await request(created.server.app)

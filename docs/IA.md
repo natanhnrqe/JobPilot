@@ -1,9 +1,9 @@
 # IA no JobPilot — vagas, currículo e compatibilidade
 
 > Escopo desta página: **Fase 2** (extração de campos de uma vaga para a prévia de cadastro),
-> **Fase 3, fatia 2** (importação de currículo para o perfil) e **Fase 3, fatia 3**
-> (análise de compatibilidade entre vaga e perfil). O orçamento diário de IA (tarefa 3.4) e a
-> automação de candidaturas (Fase 4) ainda **não existem**.
+> **Fase 3, fatia 2** (importação de currículo para o perfil), **Fase 3, fatia 3**
+> (análise de compatibilidade entre vaga e perfil) e **Fase 3, fatia 4** (teto e uso diário de IA).
+> A automação de candidaturas (Fase 4) ainda **não existe**.
 
 ## 1. Provedor escolhido e por quê
 
@@ -75,9 +75,10 @@ Regras de segurança:
   20 000 caracteres. Modelos como `gpt-4o-mini` custam centavos de dólar por milhares de chamadas;
   modelos maiores podem custar dezenas de vezes mais. **Confirme o preço vigente no seu provedor
   antes de usar em volume.**
-- `AI_TIMEOUT_MS` limita o tempo de cada chamada; **não há limite de gasto configurado nesta
-  etapa** (orçamento diário é a tarefa 3.4 da Fase 3). A análise é manual, uma vaga por vez, e
-  nunca roda em lote automaticamente.
+- `AI_TIMEOUT_MS` limita o tempo de cada chamada. O **teto diário** é definido em
+  `AI_DAILY_BUDGET` (tokens de entrada + saída; `0` = sem limite): ao atingi-lo, as chamadas de IA
+  ficam pausadas até a virada do dia local e a UI mostra o aviso. A análise continua manual, uma
+  vaga por vez, e nunca roda em lote automaticamente.
 
 ## 4. Como testar sem consumir a API real
 
@@ -85,7 +86,8 @@ Regras de segurança:
    (`backend/tests/fakeAi.ts`) — zero rede, zero chave. Cobre extração válida, campos ausentes,
    JSON inválido, esquema inválido, provedor indisponível, duplicatas, SSRF, HTML, extração de
    PDF/DOCX, regra da citação, confirmação de itens inferidos, análise de compatibilidade
-   (histórico versionado, ranking e prompt injection) e ausência de perfil/descrição.
+   (histórico versionado, ranking e prompt injection), orçamento diário (bloqueio antes de gastar,
+   teto ilimitado, estimativa e contagem por tipo) e ausência de perfil/descrição.
    Além do provedor falso, `backend/tests/integration/aiProvider.test.ts` exercita o **provedor
    real** contra um servidor local que emula a API da OpenAI: formato da requisição, 401/403, 429,
    5xx, retentativas (503/429 transitórios e persistente), timeout, conexão recusada e o fluxo
@@ -111,6 +113,7 @@ AI_MODEL=mock-model
 | Sem `AI_API_KEY`                                       | `config.ai = null`; nenhuma chamada externa é feita                                                   | aviso em `/vagas/nova`, `/perfil` e detalhe da vaga + `503 AI_UNAVAILABLE` na extração/análise |
 | Análise sem perfil preenchido                          | falha **antes** de chamar a IA                                                                        | `400 VALIDATION_ERROR` com orientação para preencher o perfil |
 | Análise de vaga sem descrição suficiente               | falha **antes** de chamar a IA                                                                        | `400 VALIDATION_ERROR` com orientação para completar a vaga |
+| Teto diário de IA atingido                             | falha **antes** de chamar a IA; registra aviso em `execution_logs`                                    | `429 AI_BUDGET_EXCEEDED` com tokens usados/teto + painel em Configurações |
 | Chave recusada (401/403)                               | erro do provedor convertido                                                                          | `503 AI_UNAVAILABLE` com orientação de revisar `AI_API_KEY` |
 | Cota/limite atingido (429)                             | até 3 tentativas com espera; depois                                                                  | `503 AI_UNAVAILABLE` indicando cota                        |
 | Serviço sobrecarregado (503, ex.: Gemini "model is overloaded") | até 3 tentativas com espera; depois                                                        | `503 AI_UNAVAILABLE` com o motivo do provedor              |
@@ -144,8 +147,10 @@ perfil manual, backup/restore) continua funcionando normalmente.
   re-análise automática.
 - **Ausência de informação não é falta de competência:** requisitos que o perfil não menciona ficam
   `unknown`; `missing` só aparece quando o próprio perfil comprova a incompatibilidade.
-- **Sem teto diário de custo:** o orçamento (`AI_DAILY_BUDGET`) é a tarefa 3.4 e ainda não foi
-  implementado; acompanhe o consumo no seu provedor.
+- **Teto diário é por tokens, não em dólares:** o JobPilot não mantém uma tabela de preços do
+  provedor; `AI_DAILY_BUDGET` limita o volume (entrada + saída) e evita surpresas. Confira o custo
+  em dólares no painel do seu provedor. Quando o provedor não devolve `usage`, os tokens são
+  estimados (≈4 caracteres/token) e a chamada é marcada como estimada.
 
 ## 7. Extração de currículo (Fase 3, fatia 2)
 
@@ -248,3 +253,31 @@ Regras aplicadas:
   `raw_json` (auditoria, não exposto pela API) e um evento `job.analysis_completed` no histórico.
 - O ranking usa a **última** versão: ordenação `priority` coloca o status “Priorizada” primeiro e,
   depois, maior score; `score` ordena só por compatibilidade. Vagas sem análise ficam por último.
+
+## 9. Uso e orçamento diário (Fase 3, fatia 4)
+
+Configuração: `AI_DAILY_BUDGET` (tokens de entrada + saída por dia; `0` ou ausente = sem limite).
+
+**Como funciona:**
+
+- Toda chamada de IA — extração de vaga, importação de CV e análise — passa por um único ponto que
+  confere o teto **antes** de enviar o prompt. Se o total do dia já atingiu o limite, a chamada é
+  recusada com `429 AI_BUDGET_EXCEEDED` e **nada é enviado ao provedor**.
+- Cada chamada bem-sucedida grava uma linha em `ai_usage` (`kind`, `model`, `tokens_in`,
+  `tokens_out`, `estimated`, `created_at`). O total do dia é a soma de entrada + saída.
+- Quando o provedor informa `usage`, os números são os reais. Quando não informa, o JobPilot estima
+  ≈4 caracteres/token e marca `estimated = 1`; a estimativa é conservadora.
+- O dia vira à **meia-noite local** (mesmo fuso da tarefa das 18:00). Não é necessário reiniciar o
+  servidor.
+- Ao bloquear, o JobPilot também registra um aviso `level='warn'`, `step='ai.budget.exceeded'` em
+  `execution_logs` (com `run_id` nulo, pois não é uma coleta).
+
+**Onde ver:** `GET /api/v1/ai/usage` devolve `date`, `budgetTokens`, `totalTokens`,
+`remainingTokens`, `exceeded`, totais e o detalhamento por `byKind` (`extraction`, `cv`,
+`analysis`). A página **Configurações** mostra o uso do dia, barra de progresso e a tabela por
+tipo; o detalhe da vaga exibe um aviso e desabilita “Analisar com IA” quando o teto foi atingido.
+
+**Limite desta etapa:** o teto é por **tokens**, não em dólares — o JobPilot não mantém tabela de
+preços do provedor. A análise é manual, uma vaga por vez; não há fila em lote para pausar. Se o
+teto for atingido no meio do dia, as chamadas ficam pausadas até a virada do dia ou até o usuário
+aumentar `AI_DAILY_BUDGET` no `.env` e reiniciar o backend.
