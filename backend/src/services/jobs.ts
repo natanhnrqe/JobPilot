@@ -21,6 +21,7 @@ import {
 } from "../repositories/applications.js";
 import { listJobEvents, recordEvent } from "../repositories/events.js";
 import { listNoteRows } from "../repositories/notes.js";
+import { listAnalyses, toAnalysisDto, type JobAnalysisDto } from "../repositories/analyses.js";
 import type { ServiceContext } from "./context.js";
 
 export interface JobDto {
@@ -45,12 +46,18 @@ export interface JobDto {
   deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Score da análise mais recente; null quando ainda não há análise. */
+  matchScore: number | null;
+  /** Data da análise mais recente. */
+  matchAnalyzedAt: string | null;
 }
 
 export interface JobDetailDto extends JobDto {
   application: ApplicationDto | null;
   notes: NoteDto[];
   events: ReturnType<typeof listJobEvents>;
+  /** Histórico de análises de compatibilidade, mais recentes primeiro. */
+  analyses: JobAnalysisDto[];
 }
 
 export interface ApplicationDto {
@@ -94,6 +101,8 @@ export function toJobDto(row: JobRow): JobDto {
     deletedAt: row.deleted_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    matchScore: row.latest_score ?? null,
+    matchAnalyzedAt: row.latest_analysis_at ?? null,
   };
 }
 
@@ -282,11 +291,13 @@ export function getJobDetail(
   const db = ctx.holder.get();
   const row = requireJob(db, id, includeDeleted);
   const application = getApplicationByJobId(db, id, true) ?? null;
+  const analyses = listAnalyses(db, id).map(toAnalysisDto);
   return {
     ...toJobDto(row),
     application: application ? toApplicationDto(application) : null,
     notes: listNoteRows(db, id, application?.id ?? null).map(toNoteDto),
     events: listJobEvents(db, id),
+    analyses,
   };
 }
 

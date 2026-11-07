@@ -7,6 +7,7 @@ import {
   CONTRACT_TYPE_LABELS,
   formatDate,
   JOB_STATUS_LABELS,
+  scoreTone,
   WORK_MODE_LABELS,
 } from "../lib/format";
 import { JobStatusBadge } from "../components/StatusBadge";
@@ -28,10 +29,11 @@ export default function Jobs() {
   const workMode = searchParams.get("workMode") ?? "";
   const contractType = searchParams.get("contractType") ?? "";
   const q = searchParams.get("q") ?? "";
+  const sort = searchParams.get("sort") ?? "";
   const includeDeleted = searchParams.get("includeDeleted") === "true";
   const page = Number(searchParams.get("page") ?? "1");
 
-  const path = `/jobs${qs({ status, workMode, contractType, q, includeDeleted: includeDeleted || undefined, page, pageSize: 20 })}`;
+  const path = `/jobs${qs({ status, workMode, contractType, q, sort: sort || undefined, includeDeleted: includeDeleted ? "true" : undefined, page, pageSize: 20 })}`;
   const { data, error, loading, reload } = useFetch<Paged<Job>>(path);
 
   const [showForm, setShowForm] = useState(false);
@@ -219,6 +221,14 @@ export default function Jobs() {
             ))}
           </select>
         </label>
+        <label>
+          Ordenar por
+          <select value={sort} onChange={(e) => updateFilter("sort", e.target.value)}>
+            <option value="">Mais recentes</option>
+            <option value="priority">Prioridade (manual + IA)</option>
+            <option value="score">Compatibilidade</option>
+          </select>
+        </label>
         <label className="checkbox">
           <input
             type="checkbox"
@@ -244,6 +254,7 @@ export default function Jobs() {
                 <th>Empresa</th>
                 <th>Modalidade</th>
                 <th>Contrato</th>
+                <th>Compatibilidade</th>
                 <th>Descoberta</th>
                 <th>Status</th>
               </tr>
@@ -269,6 +280,22 @@ export default function Jobs() {
                       </span>
                     )}
                   </td>
+                  <td>
+                    {job.matchScore === null ? (
+                      <span className="muted">—</span>
+                    ) : (
+                      <span
+                        className={`score-badge score-${scoreTone(job.matchScore)}`}
+                        title={
+                          job.matchAnalyzedAt
+                            ? `Analisada em ${formatDate(job.matchAnalyzedAt)}`
+                            : undefined
+                        }
+                      >
+                        {job.matchScore}
+                      </span>
+                    )}
+                  </td>
                   <td>{formatDate(job.discoveredAt)}</td>
                   <td>
                     <JobStatusBadge status={job.status as JobStatus} />
@@ -277,7 +304,7 @@ export default function Jobs() {
               ))}
               {data.items.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="muted">
+                  <td colSpan={7} className="muted">
                     Nenhuma vaga encontrada com os filtros atuais.
                   </td>
                 </tr>

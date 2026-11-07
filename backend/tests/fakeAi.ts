@@ -100,3 +100,62 @@ export const VALID_CV_EXTRACTION = JSON.stringify({
   ],
   extractionNotes: ["Dados extraidos do CV"],
 });
+
+/** Payload JSON válido da análise de compatibilidade (Seção 8.3). */
+export const VALID_JOB_ANALYSIS = JSON.stringify({
+  score: 82,
+  summary: "Perfil atende ao requisito central de Node.js e à modalidade remota.",
+  rationale: [
+    {
+      point: "A vaga pede Node.js e o perfil comprova experiência com a tecnologia.",
+      evidence: "cv",
+      quote: "Node.js avancado",
+    },
+    {
+      point: "A vaga é remota, alinhada à preferência declarada.",
+      evidence: "job",
+      quote: "Vaga 100% remota",
+    },
+    {
+      point: "O perfil tem experiência backend compatível com o cargo.",
+      evidence: "cv",
+      quote: "Desenvolvedor Backend na Acme",
+    },
+  ],
+  requirements: [
+    { text: "Node.js", kind: "required", match: "matched" },
+    { text: "Ingles fluente", kind: "nice_to_have", match: "unknown" },
+  ],
+  gaps: [{ text: "A vaga pede 3 anos de experiencia; o perfil mostra 2.", severity: "minor" }],
+  unknowns: ["Nivel de ingles nao informado no perfil"],
+  recommend_apply: true,
+  confidence: "high",
+});
+
+/** Segunda versão (re-análise) com score menor. */
+export const VALID_JOB_ANALYSIS_2 = JSON.stringify({
+  score: 64,
+  summary: "Perfil atende parcialmente; ha lacuna de experiencia exigida.",
+  rationale: [
+    {
+      point: "Node.js esta presente no perfil.",
+      evidence: "cv",
+      quote: "Node.js avancado",
+    },
+    {
+      point: "A vaga exige 3 anos e o perfil indica 2.",
+      evidence: "job",
+      quote: "3 anos de experiencia",
+    },
+    {
+      point: "A modalidade remota e compativel.",
+      evidence: "cv",
+      quote: "Remoto",
+    },
+  ],
+  requirements: [{ text: "Node.js", kind: "required", match: "matched" }],
+  gaps: [{ text: "Experiencia abaixo do exigido.", severity: "blocker" }],
+  unknowns: [],
+  recommend_apply: false,
+  confidence: "medium",
+});

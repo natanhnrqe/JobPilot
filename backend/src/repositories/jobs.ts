@@ -25,6 +25,10 @@ export interface JobRow {
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
+  /** Score da análise mais recente (null quando a vaga ainda não foi analisada). */
+  latest_score?: number | null;
+  /** Data da análise mais recente. */
+  latest_analysis_at?: string | null;
 }
 
 export interface JobInsert {
@@ -96,7 +100,12 @@ export function findJobByExternalId(
 
 export function getJobRow(db: Db, id: number, includeDeleted = false): JobRow | undefined {
   return db.get<JobRow>(
-    `SELECT * FROM jobs WHERE id = ? ${includeDeleted ? "" : "AND deleted_at IS NULL"}`,
+    `SELECT j.*, a.score AS latest_score, a.created_at AS latest_analysis_at
+       FROM jobs j
+       LEFT JOIN ai_analyses a ON a.id = (
+         SELECT id FROM ai_analyses WHERE job_id = j.id ORDER BY version DESC LIMIT 1
+       )
+      WHERE j.id = ? ${includeDeleted ? "" : "AND j.deleted_at IS NULL"}`,
     [id],
   );
 }
@@ -174,35 +183,54 @@ export function listJobRows(db: Db, filters: JobFilters): { rows: JobRow[]; tota
   const where: string[] = [];
   const params: SqlParam[] = [];
 
-  if (!filters.includeDeleted) where.push("deleted_at IS NULL");
+  if (!filters.includeDeleted) where.push("j.deleted_at IS NULL");
   if (filters.status) {
-    where.push("status = ?");
+    where.push("j.status = ?");
     params.push(filters.status);
   }
   if (filters.workMode) {
-    where.push("work_mode = ?");
+    where.push("j.work_mode = ?");
     params.push(filters.workMode);
   }
   if (filters.contractType) {
-    where.push("contract_type = ?");
+    where.push("j.contract_type = ?");
     params.push(filters.contractType);
   }
   if (filters.q) {
-    where.push("(LOWER(title) LIKE ? OR LOWER(COALESCE(company, '')) LIKE ?)");
+    where.push("(LOWER(j.title) LIKE ? OR LOWER(COALESCE(j.company, '')) LIKE ?)");
     const like = `%${filters.q.toLowerCase()}%`;
     params.push(like, like);
   }
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
+  const sort = filters.sort ?? "discovered_at";
   const sortable = new Set(["discovered_at", "title", "company", "status", "created_at"]);
-  const sortColumn = sortable.has(filters.sort ?? "") ? (filters.sort as string) : "discovered_at";
+  let orderBy: string;
+  if (sort === "priority") {
+    // Prioridade manual prevalece: status 'prioritized' vem antes de qualquer
+    // score. Dentro de cada grupo, maior compatibilidade primeiro; vagas sem
+    // análise ficam por último.
+    orderBy =
+      "CASE WHEN j.status = 'prioritized' THEN 0 ELSE 1 END ASC, " +
+      "(latest_score IS NULL) ASC, latest_score DESC, j.discovered_at DESC, j.id DESC";
+  } else if (sort === "score") {
+    orderBy = "(latest_score IS NULL) ASC, latest_score DESC, j.discovered_at DESC, j.id DESC";
+  } else {
+    const sortColumn = sortable.has(sort) ? sort : "discovered_at";
+    orderBy = `j.${sortColumn} DESC, j.id DESC`;
+  }
   const offset = (filters.page - 1) * filters.pageSize;
 
-  const totalRow = db.get<{ n: number }>(`SELECT COUNT(*) AS n FROM jobs ${whereSql}`, params);
+  const totalRow = db.get<{ n: number }>(`SELECT COUNT(*) AS n FROM jobs j ${whereSql}`, params);
   const rows = db.all<JobRow>(
-    `SELECT * FROM jobs ${whereSql}
-     ORDER BY ${sortColumn} DESC, id DESC
-     LIMIT ? OFFSET ?`,
+    `SELECT j.*, a.score AS latest_score, a.created_at AS latest_analysis_at
+       FROM jobs j
+       LEFT JOIN ai_analyses a ON a.id = (
+         SELECT id FROM ai_analyses WHERE job_id = j.id ORDER BY version DESC LIMIT 1
+       )
+       ${whereSql}
+      ORDER BY ${orderBy}
+      LIMIT ? OFFSET ?`,
     [...params, filters.pageSize, offset],
   );
 

@@ -47,6 +47,53 @@ export interface Job {
   deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Score da análise de compatibilidade mais recente (null = ainda não analisada). */
+  matchScore: number | null;
+  /** Data da análise mais recente. */
+  matchAnalyzedAt: string | null;
+}
+
+export type AnalysisConfidence = "low" | "medium" | "high";
+export type AnalysisEvidence = "cv" | "job";
+export type RequirementKind = "required" | "nice_to_have";
+export type RequirementMatch = "matched" | "missing" | "unknown";
+export type GapSeverity = "blocker" | "minor";
+
+export interface AnalysisRationale {
+  point: string;
+  evidence: AnalysisEvidence;
+  quote: string;
+}
+
+export interface AnalysisRequirement {
+  text: string;
+  kind: RequirementKind;
+  match: RequirementMatch;
+}
+
+export interface AnalysisGap {
+  text: string;
+  severity: GapSeverity;
+}
+
+/** Uma versão da análise de compatibilidade (o histórico nunca é sobrescrito). */
+export interface JobAnalysis {
+  id: number;
+  jobId: number;
+  version: number;
+  model: string;
+  promptVersion: string;
+  score: number;
+  summary: string;
+  rationale: AnalysisRationale[];
+  requirements: AnalysisRequirement[];
+  gaps: AnalysisGap[];
+  unknowns: string[];
+  recommendApply: boolean;
+  confidence: AnalysisConfidence;
+  tokensIn: number | null;
+  tokensOut: number | null;
+  createdAt: string;
 }
 
 export interface Note {
@@ -85,6 +132,8 @@ export interface JobDetail extends Job {
   application: Application | null;
   notes: Note[];
   events: Event[];
+  /** Histórico completo, mais recente primeiro. */
+  analyses: JobAnalysis[];
 }
 
 export interface ApplicationListItem extends Application {

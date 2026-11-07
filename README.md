@@ -1,6 +1,6 @@
 # JobPilot
 
-Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e candidaturas — dashboard com vagas e candidaturas, status validados, histórico, **cadastro assistido por IA** e **perfil profissional com importação de currículo**.
+Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e candidaturas — dashboard com vagas e candidaturas, status validados, histórico, **cadastro assistido por IA**, **perfil profissional com importação de currículo** e **análise de compatibilidade por IA**.
 
 > 📘 Especificação completa: [`docs/ESPECIFICACAO-TECNICA.md`](docs/ESPECIFICACAO-TECNICA.md) · Escopo funcional: [`docs/ESCOPO.md`](docs/ESCOPO.md) · IA: [`docs/IA.md`](docs/IA.md)
 
@@ -52,9 +52,9 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 - ✅ **Edição manual** de dados pessoais, experiências, formação, habilidades, idiomas, projetos, preferências profissionais e respostas padrão para formulários
 - ✅ Rotas `GET/PUT /api/v1/profile`, `POST /api/v1/profile/cv` (prévia, não persiste) e `POST /api/v1/profile/cv/confirm`
 
-✅ **217 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, perfil, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
+✅ **231 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, análise de compatibilidade, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, perfil, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
 
-**Não implementado** (por design, por enquanto): análise de compatibilidade entre vaga e perfil, Playwright/automação de envio e lembretes.
+**Não implementado** (por design, por enquanto): orçamento diário de IA (tarefa 3.4), análise em lote, Playwright/automação de envio e lembretes.
 
 ## Requisitos
 
@@ -154,6 +154,16 @@ Regras importantes:
 
 As rotas são `GET /api/v1/profile`, `PUT /api/v1/profile`, `POST /api/v1/profile/cv` e `POST /api/v1/profile/cv/confirm`.
 
+**Fase 3 — análise de compatibilidade por IA (fatia 3)**
+
+- ✅ **Analisar com IA** no detalhe da vaga: a IA compara a descrição com o perfil salvo e devolve **score de 0 a 100**, resumo, justificativas com evidência (perfil ou vaga), requisitos obrigatórios/desejáveis, lacunas, informações desconhecidas, confiança e uma **sugestão** de aplicar
+- ✅ **A IA não decide nada**: o status da vaga não é alterado, a vaga não é descartada automaticamente e o score **não é garantia de contratação**
+- ✅ **Histórico versionado**: cada re-análise cria uma nova versão; as anteriores continuam visíveis no detalhe da vaga
+- ✅ **Ranking**: a listagem pode ser ordenada por **prioridade** (status “Priorizada” primeiro, depois maior compatibilidade) ou por **compatibilidade**; o Dashboard mostra as melhores oportunidades
+- ✅ **Regra conservadora**: ausência de informação no perfil vira `unknown`, não “não atende” — a IA só marca `missing` quando o perfil comprova que o requisito não é atendido
+- ✅ Sem perfil preenchido, sem descrição suficiente ou sem `AI_API_KEY`, a análise é recusada com mensagem clara; o restante do JobPilot continua funcionando
+- ✅ Rota `POST /api/v1/jobs/:id/analysis` (cria uma nova versão; o histórico vem em `GET /api/v1/jobs/:id`)
+
 ## Página de Execuções
 
 Com o servidor rodando, abra **<http://localhost:5173/execucoes>** em desenvolvimento (`npm run dev`) ou **<http://127.0.0.1:3000/execucoes>** com a interface compilada (`npm start`), ou clique em **Execuções** no menu. A página mostra:
@@ -215,7 +225,7 @@ data/       banco, backups e logs (não versionado)
 ## Próximos marcos (resumo da especificação)
 
 1. **Fase 2** — coleta automática de vagas de fontes verificadas + agendamento às 18:00
-2. **Fase 3** — preferências de busca, perfil profissional com importação de CV (fatias 1 e 2 concluídas) e IA para análise de compatibilidade (nunca inventa qualificações)
+2. **Fase 3** — preferências de busca, perfil profissional com importação de CV e análise de compatibilidade por IA (fatias 1, 2 e 3 concluídas; falta o teto diário de custo, tarefa 3.4)
 3. **Fase 4** — candidaturas automatizadas com confirmação por candidatura, portais verificados e CAPTCHA sempre encaminhado ao humano
 4. **Fase 5** — lembretes de acompanhamento e consolidação
 

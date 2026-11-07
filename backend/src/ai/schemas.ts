@@ -131,6 +131,57 @@ export const cvExtractionSchema = z.object({
 
 export type CvExtraction = z.infer<typeof cvExtractionSchema>;
 
+/**
+ * Saída estruturada da análise de compatibilidade (Seção 8.3).
+ *
+ * `score` aceita decimal e é arredondado para inteiro. `rationale` exige de 3
+ * a 6 itens, cada um com evidência do CV ou da vaga; resposta fora disso é
+ * rejeitada e gera nova tentativa. `recommend_apply` é apenas uma sugestão —
+ * o status da vaga nunca é alterado pela IA.
+ */
+export const jobAnalysisSchema = z.object({
+  score: z
+    .number()
+    .min(0)
+    .max(100)
+    .transform((value) => Math.round(value)),
+  summary: z.string().trim().max(500).default(""),
+  rationale: z
+    .array(
+      z.object({
+        point: z.string().trim().min(1).max(500),
+        evidence: z.enum(["cv", "job"]),
+        quote: z.string().trim().max(500).default(""),
+      }),
+    )
+    .min(3)
+    .max(6),
+  requirements: z
+    .array(
+      z.object({
+        text: z.string().trim().min(1).max(300),
+        kind: z.enum(["required", "nice_to_have"]),
+        match: z.enum(["matched", "missing", "unknown"]),
+      }),
+    )
+    .max(30)
+    .default([]),
+  gaps: z
+    .array(
+      z.object({
+        text: z.string().trim().min(1).max(300),
+        severity: z.enum(["blocker", "minor"]),
+      }),
+    )
+    .max(20)
+    .default([]),
+  unknowns: z.array(z.string().trim().min(1).max(300)).max(20).default([]),
+  recommend_apply: z.boolean(),
+  confidence: z.enum(["low", "medium", "high"]),
+});
+
+export type JobAnalysis = z.infer<typeof jobAnalysisSchema>;
+
 /** Normaliza a data de publicação: ISO ou YYYY-MM-DD; qualquer outra coisa → null (nunca "agora"). */
 export function normalizePostedAt(value: string | null | undefined): string | null {
   if (!value) return null;

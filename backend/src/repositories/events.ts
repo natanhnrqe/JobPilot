@@ -3,6 +3,7 @@ import type { Db } from "../db/connection.js";
 export type EventType =
   | "job.created"
   | "job.status_changed"
+  | "job.analysis_completed"
   | "job.deleted"
   | "job.restored"
   | "application.created"

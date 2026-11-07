@@ -1,15 +1,27 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
-import type { JobDetail, JobStatus, ApplicationStatus } from "../api/types";
+import type {
+  ApplicationStatus,
+  ExtractionStatus,
+  JobAnalysis,
+  JobDetail,
+  JobStatus,
+} from "../api/types";
 import { JOB_TRANSITIONS, APPLICATION_TRANSITIONS } from "../api/types";
 import { useFetch, errorMessage } from "../lib/useFetch";
 import {
+  ANALYSIS_CONFIDENCE_LABELS,
   APPLICATION_STATUS_LABELS,
   CONTRACT_TYPE_LABELS,
+  GAP_SEVERITY_LABELS,
   JOB_STATUS_LABELS,
+  REQUIREMENT_KIND_LABELS,
+  REQUIREMENT_MATCH_LABELS,
   WORK_MODE_LABELS,
   formatDate,
+  formatDateTime,
+  scoreTone,
 } from "../lib/format";
 import { ApplicationStatusBadge, JobStatusBadge } from "../components/StatusBadge";
 import { EventTimeline } from "../components/EventTimeline";
@@ -20,6 +32,7 @@ export default function JobDetail() {
   const jobId = Number(id);
   const navigate = useNavigate();
   const { data: job, error, loading, reload } = useFetch<JobDetail>(`/jobs/${jobId}`);
+  const { data: aiStatus } = useFetch<ExtractionStatus>("/extractions/status");
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<JobDetail> | null>(null);
@@ -71,6 +84,10 @@ export default function JobDetail() {
 
   async function changeStatus(next: JobStatus) {
     await run(() => api.patch(`/jobs/${jobId}`, { status: next }));
+  }
+
+  async function analyzeCompatibility() {
+    await run(() => api.post(`/jobs/${jobId}/analysis`));
   }
 
   async function createApplication() {
@@ -286,6 +303,68 @@ export default function JobDetail() {
       )}
 
       <div className="panel">
+        <div className="page-head">
+          <h2>Compatibilidade com o perfil</h2>
+          <div className="row-actions">
+            {aiStatus?.enabled === false && (
+              <span className="muted small">IA não configurada (AI_API_KEY)</span>
+            )}
+            <button
+              onClick={analyzeCompatibility}
+              disabled={busy || aiStatus?.enabled === false || job.deletedAt !== null}
+            >
+              {job.analyses.length > 0 ? "Analisar novamente" : "Analisar com IA"}
+            </button>
+          </div>
+        </div>
+
+        {job.analyses.length === 0 ? (
+          <p className="muted">
+            Nenhuma análise ainda. A análise compara esta vaga com o perfil salvo em{" "}
+            <Link to="/perfil">Perfil</Link> e sugere um score explicável — ela não altera o status
+            da vaga.
+          </p>
+        ) : (
+          <>
+            <AnalysisDetails analysis={job.analyses[0]!} />
+            {job.analyses.length > 1 && (
+              <details className="analysis-history">
+                <summary>Análises anteriores ({job.analyses.length - 1})</summary>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Versão</th>
+                      <th>Score</th>
+                      <th>Sugestão</th>
+                      <th>Confiança</th>
+                      <th>Modelo</th>
+                      <th>Data</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {job.analyses.slice(1).map((analysis) => (
+                      <tr key={analysis.id}>
+                        <td>v{analysis.version}</td>
+                        <td>
+                          <span className={`score-badge score-${scoreTone(analysis.score)}`}>
+                            {analysis.score}
+                          </span>
+                        </td>
+                        <td>{analysis.recommendApply ? "Aplicar" : "Cautela"}</td>
+                        <td>{ANALYSIS_CONFIDENCE_LABELS[analysis.confidence]}</td>
+                        <td>{analysis.model}</td>
+                        <td>{formatDateTime(analysis.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </details>
+            )}
+          </>
+        )}
+      </div>
+
+      <div className="panel">
         <h2>Status da vaga</h2>
         <div className="status-actions">
           <span className="muted">Mudar para:</span>
@@ -352,6 +431,114 @@ export default function JobDetail() {
         <h2>Histórico de eventos</h2>
         <EventTimeline events={job.events} />
       </div>
+    </div>
+  );
+}
+
+function AnalysisDetails({ analysis }: { analysis: JobAnalysis }) {
+  return (
+    <div>
+      <div className="analysis-head">
+        <div className={`score-big score-${scoreTone(analysis.score)}`}>
+          {analysis.score}
+          <span>/100</span>
+        </div>
+        <div className="analysis-overview">
+          <p>
+            <strong>
+              {analysis.recommendApply ? "Sugestão: vale aplicar" : "Sugestão: avaliar com cautela"}
+            </strong>{" "}
+            <span className="badge">sugestão da IA</span>
+          </p>
+          <p className="muted small">
+            Confiança {ANALYSIS_CONFIDENCE_LABELS[analysis.confidence]} · versão {analysis.version}{" "}
+            · {analysis.model} · {formatDateTime(analysis.createdAt)}
+            {analysis.tokensIn !== null && analysis.tokensOut !== null && (
+              <> · {analysis.tokensIn + analysis.tokensOut} tokens</>
+            )}
+          </p>
+          {analysis.summary && <p>{analysis.summary}</p>}
+        </div>
+      </div>
+
+      {analysis.rationale.length > 0 && (
+        <>
+          <h3>Por que este score</h3>
+          <ul className="analysis-list">
+            {analysis.rationale.map((item, index) => (
+              <li key={`${index}-${item.point}`}>
+                <span className={`badge badge-${item.evidence}`}>
+                  {item.evidence === "cv" ? "Perfil" : "Vaga"}
+                </span>{" "}
+                {item.point}
+                {item.quote && <q className="analysis-quote">{item.quote}</q>}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {analysis.requirements.length > 0 && (
+        <>
+          <h3>Requisitos</h3>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Requisito</th>
+                <th>Tipo</th>
+                <th>Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analysis.requirements.map((item, index) => (
+                <tr key={`${index}-${item.text}`}>
+                  <td>{item.text}</td>
+                  <td>{REQUIREMENT_KIND_LABELS[item.kind]}</td>
+                  <td>
+                    <span className={`badge match-${item.match}`}>
+                      {REQUIREMENT_MATCH_LABELS[item.match]}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {analysis.gaps.length > 0 && (
+        <>
+          <h3>Lacunas</h3>
+          <ul className="analysis-list">
+            {analysis.gaps.map((item, index) => (
+              <li key={`${index}-${item.text}`}>
+                <span className={`badge gap-${item.severity}`}>
+                  {GAP_SEVERITY_LABELS[item.severity]}
+                </span>{" "}
+                {item.text}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {analysis.unknowns.length > 0 && (
+        <>
+          <h3>Informações desconhecidas</h3>
+          <ul className="analysis-list">
+            {analysis.unknowns.map((item, index) => (
+              <li key={`${index}-${item}`} className="muted">
+                {item}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      <p className="muted small">
+        A pontuação é explicável e não é garantia de contratação. A IA não altera o status da vaga
+        nem descarta oportunidades automaticamente.
+      </p>
     </div>
   );
 }

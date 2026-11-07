@@ -239,7 +239,9 @@ export const listJobsQuery = z
       .enum(["true", "false"])
       .transform((v) => v === "true")
       .optional(),
-    sort: z.enum(["discovered_at", "title", "company", "status", "created_at"]).optional(),
+    sort: z
+      .enum(["discovered_at", "title", "company", "status", "created_at", "priority", "score"])
+      .optional(),
   })
   .merge(paginationQuery);
 

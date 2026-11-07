@@ -727,3 +727,137 @@ code {
   padding: 10px;
   font-size: 12px;
 }
+
+/* Análise de compatibilidade */
+.score-badge {
+  display: inline-block;
+  min-width: 38px;
+  text-align: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.score-high {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.score-mid {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.score-low {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.score-big {
+  font-size: 42px;
+  font-weight: 800;
+  line-height: 1;
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  min-width: 120px;
+  text-align: center;
+}
+
+.score-big span {
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.75;
+  margin-left: 2px;
+}
+
+.analysis-head {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.analysis-overview {
+  flex: 1;
+}
+
+.analysis-overview p {
+  margin: 0 0 6px;
+}
+
+.analysis-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.analysis-list li {
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.analysis-quote {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.analysis-history {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.analysis-history summary {
+  cursor: pointer;
+  color: var(--primary-dark);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.badge-cv {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-job {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.match-matched {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.match-missing {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.match-unknown {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.gap-blocker {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.gap-minor {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+@media (max-width: 720px) {
+  .analysis-head {
+    flex-direction: column;
+  }
+
+  .score-big {
+    width: 100%;
+  }
+}

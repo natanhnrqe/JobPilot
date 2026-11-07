@@ -1,8 +1,9 @@
-# IA no JobPilot — vagas e currículo
+# IA no JobPilot — vagas, currículo e compatibilidade
 
-> Escopo desta página: **Fase 2** (extração de campos de uma vaga para a prévia de cadastro) e
-> **Fase 3, fatia 2** (importação de currículo para o perfil). Análise de compatibilidade e
-> priorização por IA ainda **não existem** neste projeto.
+> Escopo desta página: **Fase 2** (extração de campos de uma vaga para a prévia de cadastro),
+> **Fase 3, fatia 2** (importação de currículo para o perfil) e **Fase 3, fatia 3**
+> (análise de compatibilidade entre vaga e perfil). O orçamento diário de IA (tarefa 3.4) e a
+> automação de candidaturas (Fase 4) ainda **não existem**.
 
 ## 1. Provedor escolhido e por quê
 
@@ -19,10 +20,11 @@ implementação, `OpenAiCompatibleProvider`.
   camada de serviço (`backend/src/services/extraction.ts`).
 
 O conteúdo enviado ao provedor é **apenas texto**: o texto da vaga no cadastro assistido (limitado
-a 20 000 caracteres) e o texto extraído do currículo na importação de CV (limitado a 40 000
-caracteres). No caso do CV, o backend lê o PDF/DOCX/TXT localmente e envia somente o texto — o
-arquivo original não é enviado nem armazenado. **Nenhuma credencial, nota pessoal ou dado do banco
-é enviado.**
+a 20 000 caracteres), o texto extraído do currículo na importação de CV (limitado a 40 000
+caracteres) e, na análise de compatibilidade, uma versão compacta do perfil revisado + preferências
++ descrição da vaga (limitada a 20 000 caracteres). No caso do CV, o backend lê o PDF/DOCX/TXT
+localmente e envia somente o texto — o arquivo original não é enviado nem armazenado. **Nenhuma
+credencial, nota pessoal ou dado do banco é enviado.**
 
 ## 2. Como obter e configurar a chave
 
@@ -63,23 +65,27 @@ Regras de segurança:
 
 ## 3. Custos externos
 
-- Cada extração faz **1 chamada** ao provedor (até 2, se a primeira resposta sair fora do esquema).
-  Falhas transitórias do provedor (429 e 5xx, incluindo o 503 de sobrecarga do Gemini) são
-  repetidas até **3 tentativas** com espera crescente, antes de reportar o erro.
+- Cada extração/análise faz **1 chamada** ao provedor (até 2, se a primeira resposta sair fora do
+  esquema). Falhas transitórias do provedor (429 e 5xx, incluindo o 503 de sobrecarga do Gemini)
+  são repetidas até **3 tentativas** com espera crescente, antes de reportar o erro.
 - O consumo é da **sua conta** no provedor e segue a tabela de preços dele — o JobPilot não tem
   contrato nem crédito próprio.
-- Ordem de grandeza do custo: o prompt de extração é pequeno (centenas de tokens). Modelos como
-  `gpt-4o-mini` custam centavos de dólar por milhares de extrações; modelos maiores podem custar
-  dezenas de vezes mais. **Confirme o preço vigente no seu provedor antes de usar em volume.**
-- `AI_TIMEOUT_MS` limita o tempo de cada chamada; não há limite de gasto configurado nesta etapa
-  (orçamento diário é tarefa 3.4 da Fase 3).
+- Ordem de grandeza do custo: os prompts são pequenos (centenas a alguns milhares de tokens). A
+  análise inclui o perfil compacto e a descrição da vaga; vagas muito longas são truncadas em
+  20 000 caracteres. Modelos como `gpt-4o-mini` custam centavos de dólar por milhares de chamadas;
+  modelos maiores podem custar dezenas de vezes mais. **Confirme o preço vigente no seu provedor
+  antes de usar em volume.**
+- `AI_TIMEOUT_MS` limita o tempo de cada chamada; **não há limite de gasto configurado nesta
+  etapa** (orçamento diário é a tarefa 3.4 da Fase 3). A análise é manual, uma vaga por vez, e
+  nunca roda em lote automaticamente.
 
 ## 4. Como testar sem consumir a API real
 
 1. **Suíte automatizada (padrão, offline):** `npm test` usa um provedor falso
    (`backend/tests/fakeAi.ts`) — zero rede, zero chave. Cobre extração válida, campos ausentes,
    JSON inválido, esquema inválido, provedor indisponível, duplicatas, SSRF, HTML, extração de
-   PDF/DOCX, regra da citação e confirmação de itens inferidos.
+   PDF/DOCX, regra da citação, confirmação de itens inferidos, análise de compatibilidade
+   (histórico versionado, ranking e prompt injection) e ausência de perfil/descrição.
    Além do provedor falso, `backend/tests/integration/aiProvider.test.ts` exercita o **provedor
    real** contra um servidor local que emula a API da OpenAI: formato da requisição, 401/403, 429,
    5xx, retentativas (503/429 transitórios e persistente), timeout, conexão recusada e o fluxo
@@ -102,7 +108,9 @@ AI_MODEL=mock-model
 
 | Situação                                              | O que acontece                                                                                       | Usuário vê                                                |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| Sem `AI_API_KEY`                                       | `config.ai = null`; nenhuma chamada externa é feita                                                   | aviso em `/vagas/nova` e `/perfil` + `503 AI_UNAVAILABLE` na extração |
+| Sem `AI_API_KEY`                                       | `config.ai = null`; nenhuma chamada externa é feita                                                   | aviso em `/vagas/nova`, `/perfil` e detalhe da vaga + `503 AI_UNAVAILABLE` na extração/análise |
+| Análise sem perfil preenchido                          | falha **antes** de chamar a IA                                                                        | `400 VALIDATION_ERROR` com orientação para preencher o perfil |
+| Análise de vaga sem descrição suficiente               | falha **antes** de chamar a IA                                                                        | `400 VALIDATION_ERROR` com orientação para completar a vaga |
 | Chave recusada (401/403)                               | erro do provedor convertido                                                                          | `503 AI_UNAVAILABLE` com orientação de revisar `AI_API_KEY` |
 | Cota/limite atingido (429)                             | até 3 tentativas com espera; depois                                                                  | `503 AI_UNAVAILABLE` indicando cota                        |
 | Serviço sobrecarregado (503, ex.: Gemini "model is overloaded") | até 3 tentativas com espera; depois                                                        | `503 AI_UNAVAILABLE` com o motivo do provedor              |
@@ -127,10 +135,17 @@ perfil manual, backup/restore) continua funcionando normalmente.
   inferências aparecem em `extractionNotes` e a confiança é exibida na prévia.
 - **No currículo, a regra é mais estrita:** item sem `source_quote` literal é descartado e
   inferências só entram depois de confirmação explícita do usuário.
-- **Conteúdo é dado não confiável:** vai ao modelo entre `<<<CONTEUDO_DA_VAGA>>>` com instrução de
-  ignorar comandos ali contidos; a extração não tem permissão de gravar no banco.
-- **Sem análise de compatibilidade** entre vaga e perfil nesta etapa (depende de D2/D4 na
-  especificação); o perfil já existe, mas ainda não é comparado automaticamente com as vagas.
+- **Conteúdo é dado não confiável:** vai ao modelo em blocos delimitados (`<<<CONTEUDO_DA_VAGA>>>`,
+  `<<<CONTEUDO_DO_CV>>>`, `<<<PERFIL>>>`, `<<<PREFERENCIAS>>>`, `<<<DESCRICAO_DA_VAGA>>>`) com
+  instrução de ignorar comandos ali contidos; a IA não tem permissão de gravar no banco nem de
+  mudar status.
+- **A análise é uma sugestão:** o score não é garantia de contratação, não altera o status e não
+  descarta a vaga. É feita **uma vaga por vez**, sob demanda — não há análise em lote nem
+  re-análise automática.
+- **Ausência de informação não é falta de competência:** requisitos que o perfil não menciona ficam
+  `unknown`; `missing` só aparece quando o próprio perfil comprova a incompatibilidade.
+- **Sem teto diário de custo:** o orçamento (`AI_DAILY_BUDGET`) é a tarefa 3.4 e ainda não foi
+  implementado; acompanhe o consumo no seu provedor.
 
 ## 7. Extração de currículo (Fase 3, fatia 2)
 
@@ -187,3 +202,49 @@ O texto do CV é enviado ao provedor de IA somente durante a extração.
 **Falhas:** formato não suportado ou base64 inválido → `400 VALIDATION_ERROR`; arquivo sem texto
 útil → `422 CV_ERROR`; IA indisponível → `503 AI_UNAVAILABLE`; resposta fora do schema após 2
 tentativas → `502 AI_INVALID_RESPONSE`.
+
+## 8. Análise de compatibilidade (Fase 3, fatia 3)
+
+Rota: `POST /api/v1/jobs/:id/analysis`. Cada chamada cria uma **nova versão**; o histórico completo
+vem em `GET /api/v1/jobs/:id` (`analyses`, mais recente primeiro). Nada é sobrescrito.
+
+**Pré-requisitos:** perfil salvo com dados profissionais (experiência, formação, habilidade, idioma,
+projeto ou resumo), vaga com descrição de pelo menos 30 caracteres e `AI_API_KEY` configurada. Caso
+contrário a API responde `400 VALIDATION_ERROR` ou `503 AI_UNAVAILABLE` **antes** de gastar tokens.
+
+**Entrada enviada à IA:** perfil compacto revisado (sem `source_quote`, com limites por seção),
+preferências profissionais e dados da vaga (título, empresa, local, modalidade, contrato, salário e
+descrição limitada a 20 000 caracteres). Tudo em blocos delimitados; instruções dentro deles são
+tratadas como dados.
+
+**Saída validada por zod:**
+
+```jsonc
+{
+  "score": 82, // inteiro 0..100, apenas sugestão
+  "summary": "resumo curto",
+  "rationale": [
+    { "point": "por que", "evidence": "cv|job", "quote": "trecho curto" }
+  ],
+  "requirements": [
+    { "text": "Node.js", "kind": "required|nice_to_have", "match": "matched|missing|unknown" }
+  ],
+  "gaps": [{ "text": "lacuna explicável", "severity": "blocker|minor" }],
+  "unknowns": ["informação que falta"],
+  "recommend_apply": true,
+  "confidence": "low|medium|high"
+}
+```
+
+Regras aplicadas:
+
+- `rationale` exige de **3 a 6** itens; resposta fora do esquema é rejeitada e gera **uma** nova
+  tentativa, depois `502 AI_INVALID_RESPONSE` sem gravar nada.
+- `missing` só é aceito quando o perfil comprova a incompatibilidade; ausência de menção vira
+  `unknown` e não reduz o score sozinha.
+- `recommend_apply` é sugestão: **não** muda o status, **não** cria candidatura e **não** descarta a
+  vaga. A decisão continua humana.
+- Cada análise registra `model`, `prompt_version` (`analysis-v1`), `tokens_in`, `tokens_out`,
+  `raw_json` (auditoria, não exposto pela API) e um evento `job.analysis_completed` no histórico.
+- O ranking usa a **última** versão: ordenação `priority` coloca o status “Priorizada” primeiro e,
+  depois, maior score; `score` ordena só por compatibilidade. Vagas sem análise ficam por último.

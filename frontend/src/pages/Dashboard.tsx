@@ -1,15 +1,17 @@
 import { Link } from "react-router-dom";
 import { useFetch } from "../lib/useFetch";
-import type { Dashboard } from "../api/types";
+import type { Dashboard, Job, Paged } from "../api/types";
 import {
   APPLICATION_STATUS_LABELS,
   JOB_STATUS_LABELS,
   EVENT_TYPE_LABELS,
   formatDateTime,
+  scoreTone,
 } from "../lib/format";
 
 export default function Dashboard() {
   const { data, error, loading } = useFetch<Dashboard>("/dashboard");
+  const { data: topJobs } = useFetch<Paged<Job>>("/jobs?sort=priority&pageSize=5");
 
   if (loading) return <p className="muted">Carregando…</p>;
   if (error) return <div className="alert alert-error">{error.message}</div>;
@@ -39,6 +41,42 @@ export default function Dashboard() {
           <span className="card-number">{data.jobs.deleted}</span>
           <span className="card-label">Vagas excluídas</span>
         </div>
+      </section>
+
+      <section className="panel">
+        <div className="page-head">
+          <h2>Melhores oportunidades</h2>
+          <Link to="/vagas?sort=priority">Ver todas</Link>
+        </div>
+        {topJobs && topJobs.items.length > 0 ? (
+          <ul className="stat-list">
+            {topJobs.items.map((job) => (
+              <li key={job.id}>
+                <span>
+                  <Link to={`/vagas/${job.id}`}>{job.title}</Link>
+                  {job.company && <span className="muted"> — {job.company}</span>}
+                  {job.status === "prioritized" && <span className="badge">priorizada</span>}
+                </span>
+                {job.matchScore === null ? (
+                  <span className="muted small">sem análise</span>
+                ) : (
+                  <span className={`score-badge score-${scoreTone(job.matchScore)}`}>
+                    {job.matchScore}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">
+            Nenhuma vaga cadastrada ainda. <Link to="/vagas">Cadastre ou colete vagas</Link> para
+            começar.
+          </p>
+        )}
+        <p className="muted small">
+          Prioridade manual (status “Priorizada”) vem primeiro; depois, maior compatibilidade
+          analisada pela IA. Vagas sem análise ficam por último.
+        </p>
       </section>
 
       <section className="grid-2">

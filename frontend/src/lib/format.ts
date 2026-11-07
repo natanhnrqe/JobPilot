@@ -1,6 +1,15 @@
 /** Rótulos e formatação em pt-BR. */
 
-import type { ApplicationStatus, ContractType, JobStatus, WorkMode } from "../api/types";
+import type {
+  AnalysisConfidence,
+  ApplicationStatus,
+  ContractType,
+  GapSeverity,
+  JobStatus,
+  RequirementKind,
+  RequirementMatch,
+  WorkMode,
+} from "../api/types";
 
 export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
   new: "Nova",
@@ -64,6 +73,7 @@ export const SOURCE_SUPPORT_LABELS: Record<string, string> = {
 export const EVENT_TYPE_LABELS: Record<string, string> = {
   "job.created": "Vaga cadastrada",
   "job.status_changed": "Status da vaga alterado",
+  "job.analysis_completed": "Análise de compatibilidade concluída",
   "job.deleted": "Vaga excluída",
   "job.restored": "Vaga restaurada",
   "application.created": "Candidatura iniciada",
@@ -72,6 +82,35 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   "application.restored": "Candidatura restaurada",
   "note.added": "Nota adicionada",
 };
+
+export const ANALYSIS_CONFIDENCE_LABELS: Record<AnalysisConfidence, string> = {
+  low: "Baixa",
+  medium: "Média",
+  high: "Alta",
+};
+
+export const REQUIREMENT_KIND_LABELS: Record<RequirementKind, string> = {
+  required: "Obrigatório",
+  nice_to_have: "Desejável",
+};
+
+export const REQUIREMENT_MATCH_LABELS: Record<RequirementMatch, string> = {
+  matched: "Atende",
+  missing: "Não atende",
+  unknown: "Desconhecido",
+};
+
+export const GAP_SEVERITY_LABELS: Record<GapSeverity, string> = {
+  blocker: "Bloqueador",
+  minor: "Menor",
+};
+
+/** Classe visual do score: alta (≥75), média (≥50) ou baixa. */
+export function scoreTone(score: number): "high" | "mid" | "low" {
+  if (score >= 75) return "high";
+  if (score >= 50) return "mid";
+  return "low";
+}
 
 /** Fuso usado para exibir datas (configurável em Configurações; padrao America/Sao_Paulo). */
 let currentTimezone = "America/Sao_Paulo";

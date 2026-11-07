@@ -4,6 +4,7 @@ import { createNoteSchema, listJobsQuery, createJobSchema, updateJobSchema } fro
 import * as jobsService from "../../services/jobs.js";
 import { createApplication } from "../../services/applications.js";
 import { addNote } from "../../services/notes.js";
+import { analyzeJob } from "../../services/analysis.js";
 import { getActivity } from "../../services/dashboard.js";
 import type { ServiceContext } from "../../services/context.js";
 
@@ -47,6 +48,16 @@ export function jobsRouter(ctx: ServiceContext): Router {
   router.post("/:id/restore", (req, res) => {
     const id = parse(zId, req.params.id);
     res.json(jobsService.restoreJob(ctx, id));
+  });
+
+  // POST /api/v1/jobs/:id/analysis — analisa compatibilidade com o perfil (nova versão)
+  router.post("/:id/analysis", async (req, res, next) => {
+    try {
+      const id = parse(zId, req.params.id);
+      res.status(201).json(await analyzeJob(ctx, id));
+    } catch (err) {
+      next(err);
+    }
   });
 
   // POST /api/v1/jobs/:id/application — cria a candidatura (1:1)
