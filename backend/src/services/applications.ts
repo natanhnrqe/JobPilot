@@ -164,6 +164,68 @@ export function updateApplication(
   });
 }
 
+/**
+ * Envio declarado pelo usuário (Fase 4 — candidatura assistida).
+ *
+ * Garante que existe uma candidatura para a vaga e a marca como `sent`,
+ * gravando `applied_at`. O JobPilot **não** envia nada sozinho: a chamada só
+ * acontece quando a pessoa confirma, na interface, que já clicou em enviar.
+ */
+export function markApplicationSent(
+  ctx: ServiceContext,
+  jobId: number,
+  appliedAt?: string | null,
+): ApplicationDto {
+  const db = ctx.holder.get();
+  return db.withTransaction(() => {
+    const job = getJobRow(db, jobId);
+    if (!job) throw new NotFoundError(`Vaga ${jobId} não encontrada.`);
+
+    const now = new Date().toISOString();
+    let row = getApplicationByJobId(db, jobId);
+    if (!row) {
+      const id = insertApplication(db, { jobId, status: "preparing", statusChangedAt: now });
+      recordEvent(db, {
+        jobId,
+        applicationId: id,
+        type: "application.created",
+        toValue: "preparing",
+        message: "Candidatura iniciada",
+      });
+      row = getApplicationRow(db, id)!;
+    }
+
+    if (row.deleted_at) {
+      throw new ConflictError(
+        "A candidatura desta vaga está excluída; restaure-a antes de marcar como enviada.",
+      );
+    }
+    if (row.status === "sent") return toApplicationDto(row);
+
+    const from = row.status as ApplicationStatus;
+    if (!canTransitionApplication(from, "sent")) {
+      throw new InvalidTransitionError(
+        "candidatura",
+        row.status,
+        "sent",
+        allowedApplicationTransitions(from),
+      );
+    }
+
+    const at = normalizeAppliedAt(appliedAt) ?? now;
+    updateApplicationRow(db, row.id, { status: "sent", statusChangedAt: now, appliedAt: at });
+    recordEvent(db, {
+      jobId,
+      applicationId: row.id,
+      type: "application.status_changed",
+      fromValue: row.status,
+      toValue: "sent",
+      message: "Envio declarado pelo usuário",
+    });
+    return toApplicationDto(getApplicationRow(db, row.id)!);
+  });
+}
+
 export function deleteApplication(ctx: ServiceContext, id: number): { deleted: true } {
   const db = ctx.holder.get();
   return db.withTransaction(() => {
