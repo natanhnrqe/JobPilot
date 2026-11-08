@@ -52,7 +52,7 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 - ✅ **Edição manual** de dados pessoais, experiências, formação, habilidades, idiomas, projetos, preferências profissionais e respostas padrão para formulários
 - ✅ Rotas `GET/PUT /api/v1/profile`, `POST /api/v1/profile/cv` (prévia, não persiste) e `POST /api/v1/profile/cv/confirm`
 
-✅ **250 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, análise de compatibilidade, orçamento diário de IA, candidatura assistida, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, perfil, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
+✅ **255 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, análise de compatibilidade, orçamento diário de IA, candidatura assistida, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, perfil, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
 
 **Não implementado** (por design, por enquanto): envio automatizado nos portais (os alvos vedam bots — ver [`docs/PORTAIS.md`](docs/PORTAIS.md)), análise em lote, Playwright e lembretes.
 
@@ -173,15 +173,16 @@ As rotas são `GET /api/v1/profile`, `PUT /api/v1/profile`, `POST /api/v1/profil
 - ✅ **Vira o dia** à meia-noite local (mesmo fuso da tarefa das 18:00) — o contador zera sozinho
 - ✅ Rota `GET /api/v1/ai/usage` (somente leitura)
 
-**Fase 4 — candidatura assistida (fatia 1)**
+**Fase 4 — candidatura assistida (fatias 1 e 2)**
 
 - ✅ **Sem envio automático**: os portais-alvo (Gupy, LinkedIn, Indeed e Glassdoor) vedam bots/automação; o JobPilot prepara os dados e **você** revisa e clica em enviar. Ver [`docs/PORTAIS.md`](docs/PORTAIS.md)
 - ✅ **Kit de candidatura** no detalhe da vaga: portal detectado, dados de contato/links/resumo do perfil, habilidades, idiomas e respostas salvas — cada campo com botão **Copiar**
 - ✅ **Checklist** do que está pronto/faltando: perfil, contato, links, link da vaga, descrição, análise e situação da vaga
 - ✅ **Última análise** no kit: score, lacunas e requisitos obrigatórios que o perfil não atende
 - ✅ **“Confirmo que enviei”** registra o envio **declarado** e a data (cria a candidatura se ainda não existir) — sem chamada ao portal
+- ✅ **Portal e evidência**: o envio grava o portal detectado e aceita um link de evidência (confirmação, e-mail ou print); a evidência pode ser corrigida depois
 - ✅ **Nada de login/CAPTCHA automatizado**; o kit é somente leitura e não consome IA
-- ✅ Rotas `GET /api/v1/jobs/:id/application-kit` e `POST /api/v1/jobs/:id/application/mark-sent`
+- ✅ Rotas `GET /api/v1/jobs/:id/application-kit`, `POST /api/v1/jobs/:id/application/mark-sent` e `PATCH /api/v1/applications/:id` (com `evidenceUrl`)
 
 ## Página de Execuções
 

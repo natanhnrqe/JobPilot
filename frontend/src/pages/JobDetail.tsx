@@ -43,6 +43,7 @@ export default function JobDetail() {
   const [form, setForm] = useState<Partial<JobDetail> | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [evidenceInput, setEvidenceInput] = useState("");
 
   if (loading) return <p className="muted">Carregando…</p>;
   if (error) return <div className="alert alert-error">{error.message}</div>;
@@ -113,7 +114,11 @@ export default function JobDetail() {
       )
     )
       return;
-    await run(() => api.post(`/jobs/${jobId}/application/mark-sent`));
+    const evidenceUrl = evidenceInput.trim();
+    await run(() =>
+      api.post(`/jobs/${jobId}/application/mark-sent`, evidenceUrl ? { evidenceUrl } : {}),
+    );
+    setEvidenceInput("");
   }
 
   async function deleteJob() {
@@ -437,6 +442,24 @@ export default function JobDetail() {
                 Candidatura excluída (restaure a vaga ou restaure-a pela listagem).
               </p>
             )}
+            {app.portalKey && (
+              <p className="muted small">
+                Portal registrado:{" "}
+                <span className="badge">
+                  {kitData && kitData.portal.key === app.portalKey
+                    ? kitData.portal.label
+                    : app.portalKey}
+                </span>
+              </p>
+            )}
+            {app.evidenceUrl && (
+              <p className="muted small">
+                Evidência:{" "}
+                <a href={app.evidenceUrl} target="_blank" rel="noreferrer noopener">
+                  {app.evidenceUrl}
+                </a>
+              </p>
+            )}
             {!app.deletedAt && (
               <div className="status-actions">
                 <Link to={`/candidaturas/${app.id}`} className="button-link">
@@ -473,6 +496,18 @@ export default function JobDetail() {
               {kitData.portal.manualOnly && <span className="badge">envio manual</span>}{" "}
               <span className="muted small">{kitData.portal.note}</span>
             </p>
+
+            <div className="form-row">
+              <label>
+                Link de evidência (opcional)
+                <input
+                  type="url"
+                  placeholder="https://… (confirmação, e-mail ou print)"
+                  value={evidenceInput}
+                  onChange={(e) => setEvidenceInput(e.target.value)}
+                />
+              </label>
+            </div>
 
             <div className="row-actions">
               {kitData.job.sourceUrl ? (

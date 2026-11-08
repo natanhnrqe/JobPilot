@@ -67,14 +67,20 @@ export const updateApplicationSchema = z
   .object({
     status: z.enum(APPLICATION_STATUSES_API).optional(),
     appliedAt: z.union([z.string(), z.null()]).optional(),
+    evidenceUrl: optionalUrl,
   })
-  .refine((data) => data.status !== undefined || data.appliedAt !== undefined, {
-    message: "Informe ao menos um campo (status ou appliedAt).",
-  });
+  .refine(
+    (data) =>
+      data.status !== undefined || data.appliedAt !== undefined || data.evidenceUrl !== undefined,
+    {
+      message: "Informe ao menos um campo (status, appliedAt ou evidenceUrl).",
+    },
+  );
 
-/** Envio declarado pelo usuário (a data é opcional; sem ela, usa "agora"). */
+/** Envio declarado pelo usuário (data e evidência opcionais). */
 export const markApplicationSentSchema = z.object({
   appliedAt: optionalIsoDate,
+  evidenceUrl: optionalUrl,
 });
 
 export const createNoteSchema = z.object({

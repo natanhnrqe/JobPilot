@@ -7,6 +7,10 @@ export interface ApplicationRow {
   status: string;
   status_changed_at: string;
   applied_at: string | null;
+  /** Portal detectado no momento do envio declarado (migração 008). */
+  portal_key: string | null;
+  /** Link de evidência do envio declarado (migração 008). */
+  evidence_url: string | null;
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
@@ -19,13 +23,25 @@ export function insertApplication(
     status: ApplicationStatus;
     statusChangedAt: string;
     appliedAt?: string | null;
+    portalKey?: string | null;
+    evidenceUrl?: string | null;
   },
 ): number {
   const now = new Date().toISOString();
   const result = db.run(
-    `INSERT INTO applications (job_id, status, status_changed_at, applied_at, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [data.jobId, data.status, data.statusChangedAt, data.appliedAt ?? null, now, now],
+    `INSERT INTO applications
+       (job_id, status, status_changed_at, applied_at, portal_key, evidence_url, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      data.jobId,
+      data.status,
+      data.statusChangedAt,
+      data.appliedAt ?? null,
+      data.portalKey ?? null,
+      data.evidenceUrl ?? null,
+      now,
+      now,
+    ],
   );
   return Number(result.lastInsertRowid);
 }
@@ -56,6 +72,8 @@ export interface ApplicationUpdate {
   status?: ApplicationStatus;
   statusChangedAt?: string;
   appliedAt?: string | null;
+  portalKey?: string | null;
+  evidenceUrl?: string | null;
 }
 
 export function updateApplicationRow(db: Db, id: number, patch: ApplicationUpdate): void {
@@ -73,6 +91,14 @@ export function updateApplicationRow(db: Db, id: number, patch: ApplicationUpdat
   if (patch.appliedAt !== undefined) {
     sets.push("applied_at = ?");
     params.push(patch.appliedAt);
+  }
+  if (patch.portalKey !== undefined) {
+    sets.push("portal_key = ?");
+    params.push(patch.portalKey);
+  }
+  if (patch.evidenceUrl !== undefined) {
+    sets.push("evidence_url = ?");
+    params.push(patch.evidenceUrl);
   }
   sets.push("updated_at = ?");
   params.push(new Date().toISOString());

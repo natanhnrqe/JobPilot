@@ -123,6 +123,10 @@ export interface Application {
   status: ApplicationStatus;
   statusChangedAt: string;
   appliedAt: string | null;
+  /** Portal detectado no envio declarado (ex.: gupy, linkedin, other). */
+  portalKey: string | null;
+  /** Link de evidência do envio declarado. */
+  evidenceUrl: string | null;
   deletedAt: string | null;
   createdAt: string;
   updatedAt: string;

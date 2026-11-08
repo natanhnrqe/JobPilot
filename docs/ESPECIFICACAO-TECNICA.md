@@ -453,10 +453,11 @@ CREATE TABLE credentials (
 > prepara os dados e registra o envio declarado; **nunca** envia nada sozinho.
 > Ver `docs/PORTAIS.md`.
 
-| Método | Rota                                | Descrição                                                          |
-| ------ | ----------------------------------- | ------------------------------------------------------------------ |
-| GET    | `/jobs/:id/application-kit`         | perfil + respostas + última análise + checklist + portal detectado |
-| POST   | `/jobs/:id/application/mark-sent`   | registra o envio **declarado** (data opcional; cria a candidatura) |
+| Método | Rota                                | Descrição                                                                    |
+| ------ | ----------------------------------- | ---------------------------------------------------------------------------- |
+| GET    | `/jobs/:id/application-kit`         | perfil + respostas + última análise + checklist + portal detectado           |
+| POST   | `/jobs/:id/application/mark-sent`   | registra o envio **declarado** (data e evidência opcionais; cria a candidatura) |
+| PATCH  | `/applications/:id`                 | transições + `appliedAt` + `evidenceUrl` (só quando `sent`)                  |
 
 Rotas de automação (`/automation/*`, `/send-attempts`, `/portals`) **não
 existem** e não serão criadas enquanto os portais-alvo vedarem bots.

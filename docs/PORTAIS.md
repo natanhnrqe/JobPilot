@@ -23,7 +23,7 @@ compatíveis.
 Fontes: páginas públicas de termos de uso de cada portal. Elas podem mudar;
 **reverifique antes de qualquer mudança de comportamento**.
 
-## O que o JobPilot faz hoje (fatia 1)
+## O que o JobPilot faz hoje (fatias 1 e 2)
 
 - Detecta o portal pela URL da vaga (`backend/src/domain/portals.ts`) e exibe o
   aviso correto. Todos os portais conhecidos são `manualOnly`.
@@ -36,6 +36,10 @@ Fontes: páginas públicas de termos de uso de cada portal. Elas podem mudar;
 - Abre a vaga no portal em outra aba e oferece botão de copiar cada campo.
 - **“Confirmo que enviei”** (`POST /api/v1/jobs/:id/application/mark-sent`)
   registra o envio **declarado** e a data. Não há chamada ao portal.
+- **Portal e evidência** (migração 008): o envio grava o portal detectado
+  (`portal_key`) e aceita um `evidence_url` opcional (confirmação, e-mail ou
+  print). A evidência pode ser corrigida depois em `PATCH /applications/:id`,
+  mas só quando a candidatura está `sent`.
 
 O kit é somente leitura e **não consome IA** (não gasta orçamento).
 
@@ -56,7 +60,7 @@ verificar termos, robots/limites e registrar a evidência antes de habilitar.
 
 ## Próximos passos da Fase 4
 
-1. **Rastreio de evidência**: guardar portal e link de evidência na candidatura.
+1. ~~**Rastreio de evidência**~~: concluído — portal e link de evidência ficam na candidatura.
 2. **Respostas sugeridas por IA (opcional)**: rascunho de carta/respostas a
    partir do perfil + vaga, sempre com revisão humana e sem inventar dados.
 3. **Portais com API oficial**: se algum dia houver um programa oficial para

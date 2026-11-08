@@ -22,6 +22,7 @@ export default function ApplicationDetail() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [appliedAtInput, setAppliedAtInput] = useState("");
+  const [evidenceInput, setEvidenceInput] = useState("");
 
   if (loading) return <p className="muted">Carregando…</p>;
   if (error) return <div className="alert alert-error">{error.message}</div>;
@@ -35,6 +36,7 @@ export default function ApplicationDetail() {
     try {
       await fn();
       setAppliedAtInput("");
+      setEvidenceInput("");
       reload();
     } catch (err) {
       setActionError(errorMessage(err));
@@ -60,6 +62,13 @@ export default function ApplicationDetail() {
   function saveAppliedAt() {
     if (appliedAtInput.trim() === "") return;
     void run(() => api.patch(`/applications/${appId}`, { appliedAt: appliedAtInput.trim() }));
+  }
+
+  function saveEvidence() {
+    const value = evidenceInput.trim();
+    void run(() =>
+      api.patch(`/applications/${appId}`, { evidenceUrl: value === "" ? null : value }),
+    );
   }
 
   return (
@@ -96,6 +105,22 @@ export default function ApplicationDetail() {
             <dd>{formatDate(app.appliedAt)}</dd>
           </div>
           <div>
+            <dt>Portal</dt>
+            <dd>{app.portalKey ?? "—"}</dd>
+          </div>
+          <div>
+            <dt>Evidência</dt>
+            <dd>
+              {app.evidenceUrl ? (
+                <a href={app.evidenceUrl} target="_blank" rel="noreferrer noopener">
+                  Abrir link
+                </a>
+              ) : (
+                "—"
+              )}
+            </dd>
+          </div>
+          <div>
             <dt>Status da candidatura</dt>
             <dd>{APPLICATION_STATUS_LABELS[app.status]}</dd>
           </div>
@@ -129,19 +154,35 @@ export default function ApplicationDetail() {
         )}
 
         {app.status === "sent" && (
-          <div className="form-row">
-            <label>
-              Corrigir data de envio (AAAA-MM-DD)
-              <input
-                type="date"
-                value={appliedAtInput}
-                onChange={(e) => setAppliedAtInput(e.target.value)}
-              />
-            </label>
-            <button onClick={saveAppliedAt} disabled={busy || appliedAtInput === ""}>
-              Salvar data
-            </button>
-          </div>
+          <>
+            <div className="form-row">
+              <label>
+                Corrigir data de envio (AAAA-MM-DD)
+                <input
+                  type="date"
+                  value={appliedAtInput}
+                  onChange={(e) => setAppliedAtInput(e.target.value)}
+                />
+              </label>
+              <button onClick={saveAppliedAt} disabled={busy || appliedAtInput === ""}>
+                Salvar data
+              </button>
+            </div>
+            <div className="form-row">
+              <label>
+                Link de evidência (vazio remove)
+                <input
+                  type="url"
+                  placeholder={app.evidenceUrl ?? "https://…"}
+                  value={evidenceInput}
+                  onChange={(e) => setEvidenceInput(e.target.value)}
+                />
+              </label>
+              <button onClick={saveEvidence} disabled={busy}>
+                Salvar evidência
+              </button>
+            </div>
+          </>
         )}
       </div>
 

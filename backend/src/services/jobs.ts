@@ -66,6 +66,10 @@ export interface ApplicationDto {
   status: string;
   statusChangedAt: string;
   appliedAt: string | null;
+  /** Portal detectado no envio declarado; null quando não registrado. */
+  portalKey: string | null;
+  /** Link de evidência informado pelo usuário; null quando não informado. */
+  evidenceUrl: string | null;
   deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -113,6 +117,8 @@ export function toApplicationDto(row: ApplicationRow): ApplicationDto {
     status: row.status,
     statusChangedAt: row.status_changed_at,
     appliedAt: row.applied_at,
+    portalKey: row.portal_key,
+    evidenceUrl: row.evidence_url,
     deletedAt: row.deleted_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

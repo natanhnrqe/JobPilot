@@ -177,6 +177,8 @@ describe("Envio declarado pelo usuário", () => {
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("sent");
     expect(res.body.appliedAt).toMatch(/^2026-11-01/);
+    expect(res.body.portalKey).toBe("gupy");
+    expect(res.body.evidenceUrl).toBeNull();
 
     const detail = await request(server.app).get(`/api/v1/jobs/${job.body.id}`);
     expect(detail.body.application).toMatchObject({ status: "sent" });
@@ -201,10 +203,85 @@ describe("Envio declarado pelo usuário", () => {
 
     expect(first.body.id).toBe(second.body.id);
     expect(second.body.status).toBe("sent");
+    expect(second.body.appliedAt).toBe(first.body.appliedAt);
     const count = server.ctx.holder
       .get()
       .get<{ n: number }>("SELECT COUNT(*) AS n FROM applications WHERE job_id = ?", [job.body.id]);
     expect(count?.n).toBe(1);
+  });
+
+  it("registra o portal detectado e o link de evidência", async () => {
+    const job = await createJobViaApi();
+
+    const res = await request(server.app)
+      .post(`/api/v1/jobs/${job.body.id}/application/mark-sent`)
+      .send({ evidenceUrl: "https://portal.gupy.io/application/confirmation/1" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.portalKey).toBe("gupy");
+    expect(res.body.evidenceUrl).toBe("https://portal.gupy.io/application/confirmation/1");
+  });
+
+  it("complementa a evidência ao confirmar de novo, sem mudar a data", async () => {
+    const job = await createJobViaApi();
+    const first = await request(server.app)
+      .post(`/api/v1/jobs/${job.body.id}/application/mark-sent`)
+      .send({ appliedAt: "2026-11-01" });
+
+    const second = await request(server.app)
+      .post(`/api/v1/jobs/${job.body.id}/application/mark-sent`)
+      .send({ evidenceUrl: "https://exemplo.com/confirmacao" });
+
+    expect(second.body.id).toBe(first.body.id);
+    expect(second.body.appliedAt).toBe(first.body.appliedAt);
+    expect(second.body.evidenceUrl).toBe("https://exemplo.com/confirmacao");
+  });
+
+  it("rejeita link de evidência que não seja http(s)", async () => {
+    const job = await createJobViaApi();
+
+    const res = await request(server.app)
+      .post(`/api/v1/jobs/${job.body.id}/application/mark-sent`)
+      .send({ evidenceUrl: "javascript:alert(1)" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("só aceita evidência depois do envio declarado", async () => {
+    const job = await createJobViaApi();
+    const created = await request(server.app).post(`/api/v1/jobs/${job.body.id}/application`);
+
+    const before = await request(server.app)
+      .patch(`/api/v1/applications/${created.body.id}`)
+      .send({ evidenceUrl: "https://exemplo.com/evidencia" });
+    expect(before.status).toBe(400);
+
+    await request(server.app).post(`/api/v1/jobs/${job.body.id}/application/mark-sent`);
+    const after = await request(server.app)
+      .patch(`/api/v1/applications/${created.body.id}`)
+      .send({ evidenceUrl: "https://exemplo.com/evidencia" });
+
+    expect(after.status).toBe(200);
+    expect(after.body.evidenceUrl).toBe("https://exemplo.com/evidencia");
+
+    const cleared = await request(server.app)
+      .patch(`/api/v1/applications/${created.body.id}`)
+      .send({ evidenceUrl: null });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.evidenceUrl).toBeNull();
+  });
+
+  it("PATCH status sent também registra o portal detectado", async () => {
+    const job = await createJobViaApi();
+    const created = await request(server.app).post(`/api/v1/jobs/${job.body.id}/application`);
+
+    const res = await request(server.app)
+      .patch(`/api/v1/applications/${created.body.id}`)
+      .send({ status: "sent", appliedAt: "2026-11-01" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.portalKey).toBe("gupy");
   });
 
   it("marca como enviada uma candidatura que já estava em preparação", async () => {

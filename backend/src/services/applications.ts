@@ -9,6 +9,7 @@ import {
   canTransitionApplication,
   type ApplicationStatus,
 } from "../domain/statuses.js";
+import { detectPortal } from "../domain/portals.js";
 import {
   countApplicationsByStatus,
   getApplicationByJobId,
@@ -83,6 +84,18 @@ export function createApplication(ctx: ServiceContext, jobId: number): Applicati
 export interface UpdateApplicationInput {
   status?: ApplicationStatus;
   appliedAt?: string | null;
+  evidenceUrl?: string | null;
+}
+
+/** Link de evidência: vazio vira null; se informado, precisa ser http(s). */
+function normalizeEvidenceUrl(value: string | null | undefined): string | null {
+  if (value === undefined || value === null) return null;
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+  if (!/^https?:\/\//i.test(trimmed)) {
+    throw new ValidationError("O link de evidência deve começar com http:// ou https://.");
+  }
+  return trimmed;
 }
 
 export function updateApplication(
@@ -97,13 +110,17 @@ export function updateApplication(
 
     const hasStatus = input.status !== undefined && input.status !== row.status;
     const hasAppliedAt = input.appliedAt !== undefined;
+    const hasEvidence = input.evidenceUrl !== undefined;
 
-    if (!hasStatus && !hasAppliedAt) {
-      throw new ValidationError("Informe um campo para atualizar (status ou appliedAt).");
+    if (!hasStatus && !hasAppliedAt && !hasEvidence) {
+      throw new ValidationError(
+        "Informe um campo para atualizar (status, appliedAt ou evidenceUrl).",
+      );
     }
 
     let newStatus: ApplicationStatus | undefined;
     let appliedAt: string | null | undefined;
+    let evidenceUrl: string | null | undefined;
 
     if (hasStatus) {
       const from = row.status as ApplicationStatus;
@@ -131,15 +148,32 @@ export function updateApplication(
       appliedAt = normalizeAppliedAt(input.appliedAt);
     }
 
+    if (hasEvidence) {
+      // A evidência só faz sentido para um envio declarado.
+      if (effectiveStatus !== "sent") {
+        throw new ValidationError(
+          'O link de evidência só pode ser definido quando a candidatura está ou passa a estar com status "sent".',
+        );
+      }
+      evidenceUrl = normalizeEvidenceUrl(input.evidenceUrl);
+    }
+
     if (effectiveStatus === "sent") {
-      // Envio declarado: a data é obrigatória. Se não foi informada, usa "agora".
-      if (!hasAppliedAt) {
+      if (newStatus === "sent" && !hasAppliedAt) {
+        // Envio declarado: a data é obrigatória. Se não foi informada, usa "agora".
         appliedAt = new Date().toISOString();
-      } else if (appliedAt === null) {
+      } else if (hasAppliedAt && appliedAt === null) {
         throw new ValidationError(
           'Uma candidatura com status "sent" precisa de data de envio (appliedAt).',
         );
       }
+    }
+
+    // Registra o portal detectado ao entrar em "sent" (uma única vez).
+    let portalKey: string | null | undefined;
+    if (effectiveStatus === "sent" && row.portal_key === null) {
+      const job = getJobRow(db, row.job_id);
+      portalKey = job ? detectPortal(job.source_url).key : "other";
     }
 
     const now = new Date().toISOString();
@@ -147,6 +181,8 @@ export function updateApplication(
       status: newStatus,
       statusChangedAt: newStatus ? now : undefined,
       appliedAt,
+      portalKey,
+      evidenceUrl,
     });
 
     if (newStatus) {
@@ -164,17 +200,23 @@ export function updateApplication(
   });
 }
 
+export interface MarkSentInput {
+  appliedAt?: string | null;
+  evidenceUrl?: string | null;
+}
+
 /**
  * Envio declarado pelo usuário (Fase 4 — candidatura assistida).
  *
  * Garante que existe uma candidatura para a vaga e a marca como `sent`,
- * gravando `applied_at`. O JobPilot **não** envia nada sozinho: a chamada só
- * acontece quando a pessoa confirma, na interface, que já clicou em enviar.
+ * gravando `applied_at`, o portal detectado e o link de evidência (opcional).
+ * O JobPilot **não** envia nada sozinho: a chamada só acontece quando a pessoa
+ * confirma, na interface, que já clicou em enviar.
  */
 export function markApplicationSent(
   ctx: ServiceContext,
   jobId: number,
-  appliedAt?: string | null,
+  input: MarkSentInput = {},
 ): ApplicationDto {
   const db = ctx.holder.get();
   return db.withTransaction(() => {
@@ -182,6 +224,9 @@ export function markApplicationSent(
     if (!job) throw new NotFoundError(`Vaga ${jobId} não encontrada.`);
 
     const now = new Date().toISOString();
+    const portalKey = detectPortal(job.source_url).key;
+    const evidenceUrl = normalizeEvidenceUrl(input.evidenceUrl);
+
     let row = getApplicationByJobId(db, jobId);
     if (!row) {
       const id = insertApplication(db, { jobId, status: "preparing", statusChangedAt: now });
@@ -200,7 +245,17 @@ export function markApplicationSent(
         "A candidatura desta vaga está excluída; restaure-a antes de marcar como enviada.",
       );
     }
-    if (row.status === "sent") return toApplicationDto(row);
+
+    if (row.status === "sent") {
+      // Idempotente: a data não muda. Só complementa portal/evidência ausentes.
+      if ((row.portal_key === null && portalKey !== null) || input.evidenceUrl !== undefined) {
+        updateApplicationRow(db, row.id, {
+          portalKey: row.portal_key === null ? portalKey : undefined,
+          evidenceUrl: input.evidenceUrl !== undefined ? evidenceUrl : undefined,
+        });
+      }
+      return toApplicationDto(getApplicationRow(db, row.id)!);
+    }
 
     const from = row.status as ApplicationStatus;
     if (!canTransitionApplication(from, "sent")) {
@@ -212,8 +267,14 @@ export function markApplicationSent(
       );
     }
 
-    const at = normalizeAppliedAt(appliedAt) ?? now;
-    updateApplicationRow(db, row.id, { status: "sent", statusChangedAt: now, appliedAt: at });
+    const at = normalizeAppliedAt(input.appliedAt) ?? now;
+    updateApplicationRow(db, row.id, {
+      status: "sent",
+      statusChangedAt: now,
+      appliedAt: at,
+      portalKey,
+      evidenceUrl,
+    });
     recordEvent(db, {
       jobId,
       applicationId: row.id,

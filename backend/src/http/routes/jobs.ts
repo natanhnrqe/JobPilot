@@ -82,8 +82,8 @@ export function jobsRouter(ctx: ServiceContext): Router {
   // POST /api/v1/jobs/:id/application/mark-sent — envio DECLARADO pelo usuário
   router.post("/:id/application/mark-sent", (req, res) => {
     const id = parse(zId, req.params.id);
-    const { appliedAt } = parse(markApplicationSentSchema, req.body ?? {});
-    res.json(markApplicationSent(ctx, id, appliedAt ?? null));
+    const { appliedAt, evidenceUrl } = parse(markApplicationSentSchema, req.body ?? {});
+    res.json(markApplicationSent(ctx, id, { appliedAt, evidenceUrl }));
   });
 
   // POST /api/v1/jobs/:id/notes — nova nota
