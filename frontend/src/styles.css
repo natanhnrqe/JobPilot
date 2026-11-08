@@ -860,6 +860,63 @@ code {
   accent-color: var(--primary);
 }
 
+/* Candidatura assistida */
+.kit-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+  display: grid;
+  gap: 6px;
+}
+
+.kit-checklist li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.kit-ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.kit-warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.kit-missing {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.kit-fields {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.kit-field {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.kit-field code {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .kit-field {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 720px) {
   .analysis-head {
     flex-direction: column;

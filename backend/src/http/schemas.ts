@@ -72,6 +72,11 @@ export const updateApplicationSchema = z
     message: "Informe ao menos um campo (status ou appliedAt).",
   });
 
+/** Envio declarado pelo usuário (a data é opcional; sem ela, usa "agora"). */
+export const markApplicationSentSchema = z.object({
+  appliedAt: optionalIsoDate,
+});
+
 export const createNoteSchema = z.object({
   body: z.string().trim().min(1, "A nota não pode ser vazia.").max(5000),
   applicationId: z.coerce.number().int().positive().optional(),

@@ -156,6 +156,72 @@ export interface ApplicationDetail extends Application {
   events: Event[];
 }
 
+export type ChecklistStatus = "ok" | "warn" | "missing";
+
+/** Portal detectado pela URL da vaga (Fase 4 — candidatura assistida). */
+export interface PortalInfo {
+  key: string;
+  label: string;
+  manualOnly: boolean;
+  note: string;
+}
+
+export interface ApplicationKitChecklistItem {
+  id: string;
+  label: string;
+  status: ChecklistStatus;
+  hint: string;
+}
+
+export interface ApplicationKitFit {
+  version: number;
+  score: number;
+  recommendApply: boolean;
+  confidence: AnalysisConfidence;
+  summary: string;
+  gaps: AnalysisGap[];
+  missingRequired: string[];
+  unknowns: string[];
+  createdAt: string;
+}
+
+/** GET /jobs/:id/application-kit — dados para candidatura manual assistida. */
+export interface ApplicationKit {
+  job: {
+    id: number;
+    title: string;
+    company: string | null;
+    location: string | null;
+    workMode: WorkMode;
+    contractType: ContractType;
+    salaryText: string | null;
+    sourceUrl: string | null;
+    status: JobStatus;
+    descriptionLength: number;
+  };
+  portal: PortalInfo;
+  profile: {
+    hasProfile: boolean;
+    usable: boolean;
+    personal: {
+      fullName: string | null;
+      email: string | null;
+      phone: string | null;
+      location: string | null;
+      linkedinUrl: string | null;
+      githubUrl: string | null;
+      portfolioUrl: string | null;
+    };
+    summary: string | null;
+    skills: string[];
+    languages: string[];
+    experiences: Array<{ role: string; company: string | null; current: boolean }>;
+  };
+  answers: Array<{ key: string; value: string }>;
+  fit: ApplicationKitFit | null;
+  checklist: ApplicationKitChecklistItem[];
+}
+
 export interface Dashboard {
   jobs: { total: number; deleted: number; byStatus: Record<string, number> };
   applications: { total: number; byStatus: Record<string, number> };

@@ -1,8 +1,15 @@
 import { Router } from "express";
 import { parse } from "../middleware/http.js";
-import { createNoteSchema, listJobsQuery, createJobSchema, updateJobSchema } from "../schemas.js";
+import {
+  createNoteSchema,
+  listJobsQuery,
+  createJobSchema,
+  updateJobSchema,
+  markApplicationSentSchema,
+} from "../schemas.js";
 import * as jobsService from "../../services/jobs.js";
-import { createApplication } from "../../services/applications.js";
+import { createApplication, markApplicationSent } from "../../services/applications.js";
+import { buildApplicationKit } from "../../services/applicationKit.js";
 import { addNote } from "../../services/notes.js";
 import { analyzeJob } from "../../services/analysis.js";
 import { getActivity } from "../../services/dashboard.js";
@@ -60,10 +67,23 @@ export function jobsRouter(ctx: ServiceContext): Router {
     }
   });
 
+  // GET /api/v1/jobs/:id/application-kit — dados para a candidatura assistida
+  router.get("/:id/application-kit", (req, res) => {
+    const id = parse(zId, req.params.id);
+    res.json(buildApplicationKit(ctx, id));
+  });
+
   // POST /api/v1/jobs/:id/application — cria a candidatura (1:1)
   router.post("/:id/application", (req, res) => {
     const id = parse(zId, req.params.id);
     res.status(201).json(createApplication(ctx, id));
+  });
+
+  // POST /api/v1/jobs/:id/application/mark-sent — envio DECLARADO pelo usuário
+  router.post("/:id/application/mark-sent", (req, res) => {
+    const id = parse(zId, req.params.id);
+    const { appliedAt } = parse(markApplicationSentSchema, req.body ?? {});
+    res.json(markApplicationSent(ctx, id, appliedAt ?? null));
   });
 
   // POST /api/v1/jobs/:id/notes — nova nota

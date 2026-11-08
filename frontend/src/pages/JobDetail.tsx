@@ -3,7 +3,9 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import type {
   AiUsage,
+  ApplicationKit,
   ApplicationStatus,
+  ChecklistStatus,
   ExtractionStatus,
   JobAnalysis,
   JobDetail,
@@ -35,6 +37,7 @@ export default function JobDetail() {
   const { data: job, error, loading, reload } = useFetch<JobDetail>(`/jobs/${jobId}`);
   const { data: aiStatus } = useFetch<ExtractionStatus>("/extractions/status");
   const { data: aiUsage, reload: reloadUsage } = useFetch<AiUsage>("/ai/usage");
+  const kit = useFetch<ApplicationKit>(`/jobs/${jobId}/application-kit`);
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<JobDetail> | null>(null);
@@ -47,6 +50,7 @@ export default function JobDetail() {
 
   const allowedJobTargets = JOB_TRANSITIONS[job.status];
   const app = job.application;
+  const kitData = kit.data;
 
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -55,6 +59,7 @@ export default function JobDetail() {
       await fn();
       reload();
       reloadUsage();
+      kit.reload();
     } catch (err) {
       setActionError(errorMessage(err));
     } finally {
@@ -99,6 +104,16 @@ export default function JobDetail() {
 
   async function advanceApplication(next: ApplicationStatus) {
     await run(() => api.patch(`/applications/${app!.id}`, { status: next }));
+  }
+
+  async function markSent() {
+    if (
+      !window.confirm(
+        "Confirmar que você já enviou esta candidatura pelo portal? O JobPilot não envia nada sozinho — esta ação apenas registra o envio declarado.",
+      )
+    )
+      return;
+    await run(() => api.post(`/jobs/${jobId}/application/mark-sent`));
   }
 
   async function deleteJob() {
@@ -440,6 +455,137 @@ export default function JobDetail() {
       </div>
 
       <div className="panel">
+        <div className="page-head">
+          <h2>Candidatura assistida</h2>
+          <button className="secondary" onClick={() => kit.reload()} disabled={kit.loading}>
+            Atualizar
+          </button>
+        </div>
+        <p className="muted small">
+          O JobPilot prepara os dados, mas <strong>não envia nada</strong>. Abra a vaga, cole o que
+          precisar e clique em enviar você mesmo.
+        </p>
+        {kit.error && <div className="alert alert-error">{kit.error.message}</div>}
+        {kitData && (
+          <>
+            <p>
+              <span className="badge">{kitData.portal.label}</span>{" "}
+              {kitData.portal.manualOnly && <span className="badge">envio manual</span>}{" "}
+              <span className="muted small">{kitData.portal.note}</span>
+            </p>
+
+            <div className="row-actions">
+              {kitData.job.sourceUrl ? (
+                <a
+                  className="button-link"
+                  href={kitData.job.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                >
+                  Abrir vaga no portal
+                </a>
+              ) : (
+                <span className="muted small">
+                  Cadastre o link da vaga para abrir o formulário.
+                </span>
+              )}
+              <button onClick={markSent} disabled={busy || job.deletedAt !== null}>
+                Confirmo que enviei
+              </button>
+            </div>
+
+            <h3>Checklist</h3>
+            <ul className="kit-checklist">
+              {kitData.checklist.map((item) => (
+                <li key={item.id}>
+                  <span className={`badge kit-${item.status}`}>
+                    {CHECKLIST_STATUS_LABELS[item.status]}
+                  </span>{" "}
+                  <strong>{item.label}</strong> <span className="muted small">— {item.hint}</span>
+                </li>
+              ))}
+            </ul>
+
+            <h3>Dados do perfil para colar</h3>
+            <div className="kit-fields">
+              {(
+                [
+                  ["Nome", kitData.profile.personal.fullName],
+                  ["E-mail", kitData.profile.personal.email],
+                  ["Telefone", kitData.profile.personal.phone],
+                  ["Localização", kitData.profile.personal.location],
+                  ["LinkedIn", kitData.profile.personal.linkedinUrl],
+                  ["GitHub", kitData.profile.personal.githubUrl],
+                  ["Portfólio", kitData.profile.personal.portfolioUrl],
+                  ["Resumo", kitData.profile.summary],
+                  ["Habilidades", kitData.profile.skills.join(", ") || null],
+                  ["Idiomas", kitData.profile.languages.join(", ") || null],
+                ] as Array<[string, string | null]>
+              ).map(([label, value]) =>
+                value ? <CopyField key={label} label={label} value={value} /> : null,
+              )}
+            </div>
+            {!kitData.profile.hasProfile && (
+              <p className="muted small">
+                Nenhum perfil salvo ainda. <Link to="/perfil">Preencha o perfil</Link> para ver os
+                dados aqui.
+              </p>
+            )}
+
+            {kitData.answers.length > 0 && (
+              <>
+                <h3>Respostas salvas</h3>
+                <div className="kit-fields">
+                  {kitData.answers.map((answer) => (
+                    <CopyField key={answer.key} label={answer.key} value={answer.value} />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {kitData.fit && (
+              <>
+                <h3>Última análise</h3>
+                <p>
+                  <span className={`score-badge score-${scoreTone(kitData.fit.score)}`}>
+                    {kitData.fit.score}
+                  </span>{" "}
+                  <strong>
+                    {kitData.fit.recommendApply
+                      ? "Sugestão: vale aplicar"
+                      : "Sugestão: avaliar com cautela"}
+                  </strong>{" "}
+                  <span className="muted small">
+                    · confiança {ANALYSIS_CONFIDENCE_LABELS[kitData.fit.confidence]} · versão{" "}
+                    {kitData.fit.version} · {formatDateTime(kitData.fit.createdAt)}
+                  </span>
+                </p>
+                {kitData.fit.summary && <p>{kitData.fit.summary}</p>}
+                {kitData.fit.missingRequired.length > 0 && (
+                  <div className="alert alert-warn">
+                    Requisitos obrigatórios não atendidos pelo perfil:{" "}
+                    {kitData.fit.missingRequired.join("; ")}.
+                  </div>
+                )}
+                {kitData.fit.gaps.length > 0 && (
+                  <ul className="analysis-list">
+                    {kitData.fit.gaps.map((gap, index) => (
+                      <li key={`${index}-${gap.text}`}>
+                        <span className={`badge gap-${gap.severity}`}>
+                          {GAP_SEVERITY_LABELS[gap.severity]}
+                        </span>{" "}
+                        {gap.text}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
+
+      <div className="panel">
         <h2>Notas</h2>
         <NoteList jobId={jobId} notes={job.notes} onChanged={reload} />
       </div>
@@ -448,6 +594,37 @@ export default function JobDetail() {
         <h2>Histórico de eventos</h2>
         <EventTimeline events={job.events} />
       </div>
+    </div>
+  );
+}
+
+const CHECKLIST_STATUS_LABELS: Record<ChecklistStatus, string> = {
+  ok: "OK",
+  warn: "Atenção",
+  missing: "Falta",
+};
+
+/** Campo somente leitura com botão de copiar (para colar no formulário do portal). */
+function CopyField({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <div className="kit-field">
+      <span className="muted small">{label}</span>
+      <code>{value}</code>
+      <button className="link" onClick={copy}>
+        {copied ? "Copiado" : "Copiar"}
+      </button>
     </div>
   );
 }

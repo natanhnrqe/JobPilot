@@ -52,9 +52,9 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 - ✅ **Edição manual** de dados pessoais, experiências, formação, habilidades, idiomas, projetos, preferências profissionais e respostas padrão para formulários
 - ✅ Rotas `GET/PUT /api/v1/profile`, `POST /api/v1/profile/cv` (prévia, não persiste) e `POST /api/v1/profile/cv/confirm`
 
-✅ **239 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, análise de compatibilidade, orçamento diário de IA, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, perfil, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
+✅ **250 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, análise de compatibilidade, orçamento diário de IA, candidatura assistida, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, perfil, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
 
-**Não implementado** (por design, por enquanto): análise em lote, Playwright/automação de envio e lembretes.
+**Não implementado** (por design, por enquanto): envio automatizado nos portais (os alvos vedam bots — ver [`docs/PORTAIS.md`](docs/PORTAIS.md)), análise em lote, Playwright e lembretes.
 
 ## Requisitos
 
@@ -173,6 +173,16 @@ As rotas são `GET /api/v1/profile`, `PUT /api/v1/profile`, `POST /api/v1/profil
 - ✅ **Vira o dia** à meia-noite local (mesmo fuso da tarefa das 18:00) — o contador zera sozinho
 - ✅ Rota `GET /api/v1/ai/usage` (somente leitura)
 
+**Fase 4 — candidatura assistida (fatia 1)**
+
+- ✅ **Sem envio automático**: os portais-alvo (Gupy, LinkedIn, Indeed e Glassdoor) vedam bots/automação; o JobPilot prepara os dados e **você** revisa e clica em enviar. Ver [`docs/PORTAIS.md`](docs/PORTAIS.md)
+- ✅ **Kit de candidatura** no detalhe da vaga: portal detectado, dados de contato/links/resumo do perfil, habilidades, idiomas e respostas salvas — cada campo com botão **Copiar**
+- ✅ **Checklist** do que está pronto/faltando: perfil, contato, links, link da vaga, descrição, análise e situação da vaga
+- ✅ **Última análise** no kit: score, lacunas e requisitos obrigatórios que o perfil não atende
+- ✅ **“Confirmo que enviei”** registra o envio **declarado** e a data (cria a candidatura se ainda não existir) — sem chamada ao portal
+- ✅ **Nada de login/CAPTCHA automatizado**; o kit é somente leitura e não consome IA
+- ✅ Rotas `GET /api/v1/jobs/:id/application-kit` e `POST /api/v1/jobs/:id/application/mark-sent`
+
 ## Página de Execuções
 
 Com o servidor rodando, abra **<http://localhost:5173/execucoes>** em desenvolvimento (`npm run dev`) ou **<http://127.0.0.1:3000/execucoes>** com a interface compilada (`npm start`), ou clique em **Execuções** no menu. A página mostra:
@@ -235,7 +245,7 @@ data/       banco, backups e logs (não versionado)
 
 1. **Fase 2** — coleta automática de vagas de fontes verificadas + agendamento às 18:00
 2. **Fase 3** — preferências de busca, perfil profissional com importação de CV, análise de compatibilidade por IA e teto diário de custo (fatias 1 a 4 concluídas)
-3. **Fase 4** — candidaturas automatizadas com confirmação por candidatura, portais verificados e CAPTCHA sempre encaminhado ao humano
+3. **Fase 4** — **candidatura assistida**: kit de dados, checklist e envio declarado pelo usuário; sem bot, login automatizado ou CAPTCHA contornado (os portais-alvo vedam automação — ver [`docs/PORTAIS.md`](docs/PORTAIS.md))
 4. **Fase 5** — lembretes de acompanhamento e consolidação
 
-Regras permanentes: tentativa ≠ enviada; envio automático **desligado por padrão** e sempre confirmável; nada é declarado "suportado" sem verificação real.
+Regras permanentes: tentativa ≠ enviada; o JobPilot **nunca** envia candidatura sozinho nos portais-alvo; nada é declarado "suportado" sem verificação real.

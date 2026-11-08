@@ -108,8 +108,12 @@ export function detectPortal(url: string | null | undefined): PortalInfo {
 
   for (const portal of PORTALS) {
     if (portal.hosts.some((known) => host === known || host.endsWith(`.${known}`))) {
-      const { hosts: _hosts, ...info } = portal;
-      return info;
+      return {
+        key: portal.key,
+        label: portal.label,
+        manualOnly: portal.manualOnly,
+        note: portal.note,
+      };
     }
   }
   return UNKNOWN_PORTAL;

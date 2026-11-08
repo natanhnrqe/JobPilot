@@ -446,18 +446,20 @@ CREATE TABLE credentials (
 | POST   | `/jobs/bulk-analyze` | análise em lote   |
 | GET    | `/ai/usage`          | consumo de tokens |
 
-### 4.7 Automação — **Fase 4 (não implementar no Marco 1)**
+### 4.7 Candidatura assistida — **Fase 4**
 
-Nenhuma rota de automação, envio ou tentativa será criada no Marco 1.
+> **Decisão de 2026-11-08:** os portais-alvo (Gupy, LinkedIn, Indeed e Glassdoor)
+> vedam bots/automação de candidatura. A Fase 4 é **assistida**: o JobPilot
+> prepara os dados e registra o envio declarado; **nunca** envia nada sozinho.
+> Ver `docs/PORTAIS.md`.
 
-| Método         | Rota                     | Descrição                        |
-| -------------- | ------------------------ | -------------------------------- |
-| GET/POST/PATCH | `/automation/rules`      | regras (desligadas por padrão)   |
-| GET            | `/automation/candidates` | elegíveis com justificativa      |
-| POST           | `/automation/preview`    | simulação sem executar           |
-| POST           | `/automation/send`       | envio controlado com confirmação |
-| GET            | `/send-attempts`         | histórico de tentativas          |
-| GET            | `/portals`               | portais e `support_state`        |
+| Método | Rota                                | Descrição                                                          |
+| ------ | ----------------------------------- | ------------------------------------------------------------------ |
+| GET    | `/jobs/:id/application-kit`         | perfil + respostas + última análise + checklist + portal detectado |
+| POST   | `/jobs/:id/application/mark-sent`   | registra o envio **declarado** (data opcional; cria a candidatura) |
+
+Rotas de automação (`/automation/*`, `/send-attempts`, `/portals`) **não
+existem** e não serão criadas enquanto os portais-alvo vedarem bots.
 
 ### 4.8 Sistema
 
@@ -808,6 +810,11 @@ Validação: falha de schema → nova tentativa (máx 2) → grava `execution_lo
 ## 9. Autorização e segurança da automação — **Fase 4 (não implementar no Marco 1)**
 
 > Nenhuma parte desta seção é implementada agora. As regras abaixo são **contrato para o marco futuro** e devem ser preservadas tal como estão.
+>
+> **Atualização de 2026-11-08:** a Fase 4 adotou **candidatura assistida** (sem
+> envio automático), porque Gupy, LinkedIn, Indeed e Glassdoor vedam automação.
+> Esta seção só volta a valer se um portal com condições de uso compatíveis e
+> programa oficial para candidatos for escolhido e verificado.
 
 ### 9.1 Modelo de autorização em camadas
 
@@ -1004,19 +1011,18 @@ Regras (válidas desde o Marco 1):
 | 3.5 | Prioridade derivada + ordenação no dashboard   | ordenar por prioridade; prioridade manual prevalece                        |
 | 3.6 | Teste de prompt injection                      | descrição com instrução hostil não gera ação nem vaza dados                |
 
-### Fase 4 — Automação controlada
+### Fase 4 — Candidatura assistida
 
-| #   | Tarefa                                        | CA                                                                    |
-| --- | --------------------------------------------- | --------------------------------------------------------------------- |
-| 4.1 | Credenciais cifradas                          | texto cifrado no banco; log não contém segredo                        |
-| 4.2 | Regras de automação + preview                 | UI mostra elegíveis/bloqueados com motivo; `enabled=false` por padrão |
-| 4.3 | Motor de camadas 1–7                          | teste unitário para cada camada bloqueando                            |
-| 4.4 | 1 portal verificado + adapter Playwright      | envio real em portal de teste documentado; evidência gravada          |
-| 4.5 | Máquina `send_attempts` + invariant de `sent` | tentativa sem evidência nunca vira `sent` (teste)                     |
-| 4.6 | CAPTCHA/auth → `needs_human`                  | teste com portal mock devolve `needs_human` + lembrete                |
-| 4.7 | Prevenção de duplicado                        | clique duplo e re-execução não geram 2 envios                         |
-| 4.8 | Limites diários + pausa de emergência         | limite diário recusa com mensagem; pausa interrompe no checkpoint     |
-| 4.9 | Ativação gradual                              | primeiro em modo "só preview" por N dias antes de ligar envio         |
+> Substitui a antiga “automação controlada” após a verificação dos termos de uso
+> dos portais-alvo. Nenhum envio é feito pelo JobPilot.
+
+| #   | Tarefa                                        | CA                                                                     |
+| --- | --------------------------------------------- | ---------------------------------------------------------------------- |
+| 4.1 | Kit de candidatura + detecção de portal       | portal e checklist visíveis; kit é somente leitura e não consome IA    |
+| 4.2 | Envio declarado + evidência                   | confirmar cria/avança a candidatura para `sent` com data; sem duplicata |
+| 4.3 | Respostas sugeridas por IA (opcional)         | rascunho com citação e revisão humana; nada é enviado automaticamente  |
+| 4.4 | Portais e segurança                           | `docs/PORTAIS.md`; nenhum login, CAPTCHA ou scraping desses portais    |
+| 4.5 | Revisão de segurança e regressão              | sem segredos; kit não gasta IA; ToS reverificados antes de mudanças    |
 
 ### Fase 5 — Acompanhamento e consolidação
 
@@ -1102,8 +1108,8 @@ Dentro de cada fase, ordem: **dados → domínio → API → UI → testes → d
 | **D2**  | **Provedor de IA e orçamento** (Fase 3)  | OpenAI / Anthropic / Google / modelo local (Ollama) / outro                                                                                     | escolha + **teto mensal em USD** + se aceita envio do CV para terceiros                                                                                                                                                                                                  |
 | **D3**  | **Canal de lembretes** (Fase 5)          | só no dashboard / e-mail local (SMTP) / desktop notification / Telegram bot                                                                     | **dashboard + notificação desktop**; e-mail depois                                                                                                                                                                                                                       |
 | **D4**  | **Tratamento do arquivo do CV** (Fase 3) | (a) só texto extraído, arquivo apagado; (b) retido em `data/uploads/`; (c) retenção por N dias                                                  | **(b)** com backup incluído; confirmar aceitação                                                                                                                                                                                                                         |
-| **D5**  | **Limites da automação** (Fase 4)        | envios/dia (default 5), janela de horário, portais permitidos, confirmação                                                                      | **confirmação por candidatura como padrão permanente**; envio sem confirmação só mediante autorização explícita configurando regra, limites e portais permitidos. A confirmação **nunca** é removida automaticamente com o tempo de uso — somente o usuário pode mudá-la |
-| **D6**  | **Portal-alvo da Fase 4**                | Greenhouse / Lever / Ashby / outro (indicar)                                                                                                    | escolher **um** + lista de empresas que você realmente usará                                                                                                                                                                                                             |
+| **D5**  | **Limites da automação** (Fase 4)        | envios/dia, janela de horário, portais permitidos, confirmação                                                                                  | **decisão de 2026-11-08: não há automação de envio.** Todos os portais-alvo são `manualOnly`; o JobPilot só prepara dados e registra o envio declarado. |
+| **D6**  | **Portal-alvo da Fase 4**                | Gupy / LinkedIn (candidatura simplificada) / Indeed / Glassdoor / outro                                                                         | **Gupy, LinkedIn, Indeed e Glassdoor — candidatura assistida**. Os quatro vedam bots/automação (ver `docs/PORTAIS.md`); nenhum envio é feito pelo JobPilot. |
 | **D7**  | **Auth do servidor**                     | só 127.0.0.1 / token `X-JobPilot-Token`                                                                                                         | Marco 1: **127.0.0.1** (R2); token só se expuser fora de localhost                                                                                                                                                                                                       |
 | **D8**  | **Backup automático**                    | manual / semanal automático                                                                                                                     | Marco 1: **manual pela UI + CLI**; agendamento semanal na Fase 5                                                                                                                                                                                                         |
 | **D9**  | **Fuso e hora fixos**                    | fuso da máquina / fixar `America/Sao_Paulo`                                                                                                     | Marco 1: **configurável em Configurações**, default `America/Sao_Paulo`                                                                                                                                                                                                  |
