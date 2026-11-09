@@ -43,11 +43,14 @@ O backend passa a servir a interface compilada em **http://127.0.0.1:3000**.
 
 ## 5. Primeiro uso
 
-1. Abra a aplicação e vá em **Vagas → + Nova vaga** (cadastro manual).
+1. Abra a aplicação e vá em **Vagas → + Nova vaga** (cadastro manual) ou **+ Cadastrar com IA**.
 2. Preencha o título (obrigatório) e os demais campos opcionais.
-3. Use **Iniciar candidatura** na página da vaga para acompanhar o processo.
-4. Mude status pelos botões de transição — o backend recusa qualquer transição inválida (erro 409 explica o motivo).
-5. "Enviada" pede a **data do envio**: é sempre uma declaração sua, nunca automática.
+3. Em **Perfil**, importe o currículo (PDF, DOCX ou TXT), revise a prévia e confirme. A IA só mantém itens com trecho literal do CV.
+4. Use **Iniciar candidatura** ou o kit de candidatura assistida na página da vaga.
+5. Mude status pelos botões de transição — o backend recusa qualquer transição inválida (erro 409 explica o motivo).
+6. "Enviada" pede a **data do envio**: é sempre uma declaração sua, nunca automática.
+7. Agende **follow-ups** no detalhe da candidatura; as pendências aparecem no Dashboard e podem gerar notificação desktop (Configurações).
+8. Exporte vagas, candidaturas e eventos em CSV/JSON em **Configurações → Exportar histórico**.
 
 ### Cadastro com IA (opcional)
 
@@ -77,6 +80,7 @@ Variáveis de ambiente opcionais (copie `.env.example` para `.env` na raiz; o ba
 | `AI_BASE_URL`   | `https://api.openai.com/v1`   | Endpoint compatível com OpenAI               |
 | `AI_MODEL`      | `gpt-4o-mini`                 | Modelo usado na extração                     |
 | `AI_TIMEOUT_MS` | `60000`                       | Tempo máximo por chamada de IA               |
+| `AI_DAILY_BUDGET` | `0`                         | Teto diário de tokens de IA (0 = sem limite) |
 
 A chave de IA é opcional: sem ela, apenas a extração assistida fica indisponível (o restante funciona). Veja [`docs/IA.md`](IA.md) para custos, testes offline e comportamento em falhas.
 
@@ -93,7 +97,7 @@ As migrações são arquivos SQL versionados em `backend/migrations/` e são **i
 ## 8. Testes e build
 
 ```powershell
-npm test        # 139 testes (backend); 100% offline, banco temporário por arquivo de teste
+npm test        # 287 testes (backend); 100% offline, banco temporário por arquivo de teste
 npm run build   # compila backend (tsc → backend/dist) e frontend (vite → frontend/dist)
 ```
 
@@ -105,7 +109,7 @@ Com o app fechado ou aberto, a coleta pode rodar direto no banco:
 npm run collect
 ```
 
-- Usa as fontes verificadas em [`FONTES.md`](FONTES.md) (hoje: Remotive) e grava as vagas novas pelo mesmo caminho do cadastro manual.
+- Usa as fontes verificadas em [`FONTES.md`](FONTES.md) (hoje: Remotive e Remote OK) e grava as vagas novas pelo mesmo caminho do cadastro manual.
 - Registra a execução em `search_runs` + `execution_logs` e grava o resumo em `data/last-run.json`.
 - Duas execuções simultâneas: a segunda é marcada como `skipped` (lock em `data/.lock`).
 - Saída: `0` = sucesso/parcial; `1` = falha total.
@@ -125,6 +129,19 @@ powershell -ExecutionPolicy Bypass -File scripts/install-task.ps1
 - Outro horário: `-At "19:30"`. Remover: `-Uninstall`.
 - Conferir: `Get-ScheduledTask -TaskName "JobPilot Coleta" | Get-ScheduledTaskInfo`.
 - Resultados: `search_runs`/`execution_logs`, `data/last-run.json` e `data/logs/`.
+
+### Backup semanal automático (opcional)
+
+A decisão D8 da especificação prevê um backup semanal. Depois de `npm run build`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/install-backup-task.ps1
+```
+
+- Padrão: **domingo às 12:00**, no contexto do usuário atual (o PC precisa estar ligado e o usuário logado).
+- Outro dia/horário: `-Day Saturday -At "09:00"`. Remover: `-Uninstall`.
+- Conferir: `Get-ScheduledTask -TaskName "JobPilot Backup" | Get-ScheduledTaskInfo`.
+- A retenção de 14 backups continua valendo; detalhes em [`BACKUP-RESTORE.md`](BACKUP-RESTORE.md).
 
 ## 11. Parar e limpar
 

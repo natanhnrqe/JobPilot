@@ -462,12 +462,23 @@ export default function SettingsPage() {
       </section>
 
       <section className="panel">
-        <h2>Sobre este Marco 1</h2>
+        <h2>Sobre o JobPilot</h2>
         <ul className="muted">
-          <li>Vagas cadastradas manualmente (sem busca automática — chega na Fase 2).</li>
-          <li>Sem IA, sem automação de envio e sem currículo (Fases 3 e 4).</li>
-          <li>Exclusões são lógicas: o histórico nunca é apagado.</li>
-          <li>"Enviada" é sempre uma declaração sua, com data registrada.</li>
+          <li>
+            Dados 100% locais: banco SQLite em <code>data/</code>, sem conta e sem nuvem.
+          </li>
+          <li>
+            Coleta diária de Remotive e Remote OK; IA opcional para extração, perfil, análise e
+            rascunho.
+          </li>
+          <li>
+            “Enviada” é sempre uma declaração sua, com data registrada — o JobPilot nunca envia nada
+            ao portal.
+          </li>
+          <li>
+            Exclusões são lógicas: o histórico nunca é apagado e pode ser exportado em CSV/JSON.
+          </li>
+          <li>Lembretes são locais e não mudam o status da candidatura sozinhos.</li>
         </ul>
       </section>
     </div>

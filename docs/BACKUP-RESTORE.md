@@ -25,6 +25,21 @@ npm run backup
 
 Ou pela API: `POST /api/v1/backups`.
 
+## Backup semanal automático (Fase 5)
+
+Além do backup manual, é possível agendar um backup semanal validado no Windows.
+Depois de `npm run build`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/install-backup-task.ps1
+```
+
+- Padrão: **domingo às 12:00** (horário local), no contexto do usuário atual.
+- Outro dia/horário: `-Day Saturday -At "09:00"`.
+- Remover: `-Uninstall`.
+- Conferir: `Get-ScheduledTask -TaskName "JobPilot Backup" | Get-ScheduledTaskInfo`.
+- Se o PC estiver desligado no horário, a tarefa roda na próxima vez que estiver disponível (`StartWhenAvailable`).
+
 ## Retenção
 
 Os últimos **14** backups são mantidos. Excedentes (arquivo + registro) são removidos automaticamente na criação de um novo backup.

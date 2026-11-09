@@ -185,7 +185,7 @@ As rotas são `GET /api/v1/profile`, `PUT /api/v1/profile`, `POST /api/v1/profil
 - ✅ **Nada de login/CAPTCHA automatizado**; o kit é somente leitura e o rascunho consome IA pelo teto diário
 - ✅ Rotas `GET /api/v1/jobs/:id/application-kit`, `POST /api/v1/jobs/:id/application/mark-sent`, `POST /api/v1/jobs/:id/application-draft` e `PATCH /api/v1/applications/:id` (com `evidenceUrl`)
 
-**Fase 5 — acompanhamento e consolidação (fatias 1 a 3)**
+**Fase 5 — acompanhamento e consolidação (fatias 1 a 5)**
 
 - ✅ **Lembretes de acompanhamento** por candidatura: data, mensagem opcional e status (`pending`/`done`); nada é enviado ao portal nem muda o status sozinho
 - ✅ **Painel de pendências** no Dashboard: acompanhamentos vencidos aparecem em destaque (cor e selo “vencido”), ordenados antes dos próximos
@@ -195,6 +195,8 @@ As rotas são `GET /api/v1/profile`, `PUT /api/v1/profile`, `POST /api/v1/profil
 - ✅ CSV seguro: campos escapados e neutralização de fórmulas de planilha; rota somente leitura `GET /api/v1/exports/:entity?format=csv|json`
 - ✅ **Canal de notificação**: painel de pendências + **notificação desktop opcional** (ativação em Configurações); no máximo uma vez por lembrete por dia
 - ✅ Falha de permissão ou de exibição da notificação fica **apenas no console** — o dashboard e o restante do app continuam funcionando
+- ✅ **Backup semanal automático** opcional no Windows (`scripts/install-backup-task.ps1`), mantendo a retenção de 14 backups
+- ✅ **Revisão de segurança e regressão** em [`docs/SEGURANCA.md`](docs/SEGURANCA.md): sem segredos versionados, restore testado, 287 testes verdes
 
 ## Página de Execuções
 
@@ -232,7 +234,15 @@ npm run backup                                  # cria backup validado em data/b
 npm run restore -- --file <nome-do-arquivo.sqlite> --yes
 ```
 
-Detalhes do processo (validação, rollback automático, retenção): [`docs/BACKUP-RESTORE.md`](docs/BACKUP-RESTORE.md).
+Backup **semanal automático** (opcional, Windows): depois de `npm run build`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/install-backup-task.ps1
+```
+
+Padrão: domingo às 12:00 (`-Day`/`-At` para mudar; `-Uninstall` para remover).
+
+Detalhes do processo (validação, rollback automático, retenção): [`docs/BACKUP-RESTORE.md`](docs/BACKUP-RESTORE.md). Revisão de segurança e regressão: [`docs/SEGURANCA.md`](docs/SEGURANCA.md).
 
 ## Onde ficam os dados
 
@@ -250,7 +260,7 @@ Apagar a pasta `data/` reinicia a aplicação vazia (os backups são perdidos ju
 backend/    API HTTP (Express + zod), domínio (máquinas de estado), repositórios SQL,
             migrações em backend/migrations/, testes em backend/tests/
 frontend/   React + TypeScript (Vite), páginas: Dashboard, Vagas, Candidaturas, Perfil, Execuções, Configurações
-docs/       ESCOPO.md, ESPECIFICACAO-TECNICA.md, INSTALACAO.md, BACKUP-RESTORE.md, FONTES.md, IA.md
+docs/       ESCOPO.md, ESPECIFICACAO-TECNICA.md, INSTALACAO.md, BACKUP-RESTORE.md, FONTES.md, IA.md, PORTAIS.md, SEGURANCA.md
 data/       banco, backups e logs (não versionado)
 ```
 
@@ -259,6 +269,6 @@ data/       banco, backups e logs (não versionado)
 1. **Fase 2** — coleta automática de vagas de fontes verificadas + agendamento às 18:00
 2. **Fase 3** — preferências de busca, perfil profissional com importação de CV, análise de compatibilidade por IA e teto diário de custo (fatias 1 a 4 concluídas)
 3. **Fase 4** — **candidatura assistida**: kit de dados, checklist, envio declarado e rascunho de carta/respostas por IA com citações verificadas; sem bot, login automatizado ou CAPTCHA contornado (os portais-alvo vedam automação — ver [`docs/PORTAIS.md`](docs/PORTAIS.md))
-4. **Fase 5** — lembretes de acompanhamento e consolidação (fatias 1 a 3 concluídas: lembretes + painel de pendências, exportação CSV/JSON e notificação desktop opcional)
+4. **Fase 5** — lembretes de acompanhamento e consolidação (fatias 1 a 5 concluídas: lembretes + painel de pendências, exportação CSV/JSON, notificação desktop opcional, revisão de segurança e documentação)
 
 Regras permanentes: tentativa ≠ enviada; o JobPilot **nunca** envia candidatura sozinho nos portais-alvo; nada é declarado "suportado" sem verificação real.
