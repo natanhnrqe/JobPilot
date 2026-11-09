@@ -6,6 +6,7 @@ import {
   updateApplicationSchema,
   createNoteSchema,
   updateNoteSchema,
+  createFollowUpSchema,
 } from "../schemas.js";
 import {
   deleteApplication,
@@ -14,6 +15,7 @@ import {
   restoreApplication,
   updateApplication,
 } from "../../services/applications.js";
+import { completeReminder, createFollowUp } from "../../services/reminders.js";
 import { addNote, updateNote, deleteNote } from "../../services/notes.js";
 import type { ServiceContext } from "../../services/context.js";
 
@@ -51,6 +53,20 @@ export function applicationsRouter(ctx: ServiceContext): Router {
   router.post("/:id/restore", (req, res) => {
     const id = parse(zId, req.params.id);
     res.json(restoreApplication(ctx, id));
+  });
+
+  // POST /api/v1/applications/:id/follow-up — agenda um acompanhamento local
+  router.post("/:id/follow-up", (req, res) => {
+    const id = parse(zId, req.params.id);
+    const input = parse(createFollowUpSchema, req.body ?? {});
+    res.status(201).json(createFollowUp(ctx, id, input));
+  });
+
+  // POST /api/v1/applications/:id/reminders/:reminderId/complete
+  router.post("/:id/reminders/:reminderId/complete", (req, res) => {
+    const id = parse(zId, req.params.id);
+    const reminderId = parse(zId, req.params.reminderId);
+    res.json(completeReminder(ctx, id, reminderId));
   });
 
   // POST /api/v1/applications/:id/notes — nota da candidatura

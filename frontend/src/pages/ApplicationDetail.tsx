@@ -4,7 +4,13 @@ import { api } from "../api/client";
 import type { ApplicationDetail, ApplicationStatus } from "../api/types";
 import { APPLICATION_TRANSITIONS } from "../api/types";
 import { useFetch, errorMessage } from "../lib/useFetch";
-import { APPLICATION_STATUS_LABELS, formatDate, formatDateTime } from "../lib/format";
+import {
+  APPLICATION_STATUS_LABELS,
+  REMINDER_KIND_LABELS,
+  REMINDER_STATUS_LABELS,
+  formatDate,
+  formatDateTime,
+} from "../lib/format";
 import { ApplicationStatusBadge } from "../components/StatusBadge";
 import { EventTimeline } from "../components/EventTimeline";
 import { NoteList } from "../components/NoteList";
@@ -23,6 +29,8 @@ export default function ApplicationDetail() {
   const [busy, setBusy] = useState(false);
   const [appliedAtInput, setAppliedAtInput] = useState("");
   const [evidenceInput, setEvidenceInput] = useState("");
+  const [followUpDue, setFollowUpDue] = useState("");
+  const [followUpMessage, setFollowUpMessage] = useState("");
 
   if (loading) return <p className="muted">Carregando…</p>;
   if (error) return <div className="alert alert-error">{error.message}</div>;
@@ -30,13 +38,14 @@ export default function ApplicationDetail() {
 
   const allowed = APPLICATION_TRANSITIONS[app.status];
 
-  async function run(fn: () => Promise<unknown>) {
+  async function run(fn: () => Promise<unknown>, onSuccess?: () => void) {
     setBusy(true);
     setActionError(null);
     try {
       await fn();
       setAppliedAtInput("");
       setEvidenceInput("");
+      onSuccess?.();
       reload();
     } catch (err) {
       setActionError(errorMessage(err));
@@ -69,6 +78,26 @@ export default function ApplicationDetail() {
     void run(() =>
       api.patch(`/applications/${appId}`, { evidenceUrl: value === "" ? null : value }),
     );
+  }
+
+  function scheduleFollowUp() {
+    if (followUpDue === "") return;
+    const message = followUpMessage.trim();
+    void run(
+      () =>
+        api.post(`/applications/${appId}/follow-up`, {
+          dueAt: followUpDue,
+          ...(message !== "" ? { message } : {}),
+        }),
+      () => {
+        setFollowUpDue("");
+        setFollowUpMessage("");
+      },
+    );
+  }
+
+  function completeReminder(reminderId: number) {
+    void run(() => api.post(`/applications/${appId}/reminders/${reminderId}/complete`));
   }
 
   return (
@@ -184,6 +213,74 @@ export default function ApplicationDetail() {
             </div>
           </>
         )}
+      </div>
+
+      <div className="panel">
+        <h2>Lembretes de acompanhamento</h2>
+        <p className="muted small">
+          Lembretes são locais: o JobPilot não envia nada ao portal nem altera o status da
+          candidatura sozinho.
+        </p>
+
+        {app.reminders.length === 0 ? (
+          <p className="muted">Nenhum lembrete para esta candidatura.</p>
+        ) : (
+          <ul className="reminder-list">
+            {app.reminders.map((reminder) => {
+              const overdue =
+                reminder.status === "pending" && new Date(reminder.dueAt).getTime() < Date.now();
+              return (
+                <li key={reminder.id} className={overdue ? "reminder-overdue" : ""}>
+                  <span>
+                    {overdue && <span className="badge badge-overdue">vencido</span>}
+                    {overdue && " "}
+                    <strong>{REMINDER_KIND_LABELS[reminder.kind]}</strong>
+                    <span className="muted">
+                      {" "}
+                      · {reminder.status === "pending" && !overdue ? "vence em" : "venceu em"}{" "}
+                      {formatDate(reminder.dueAt)}
+                    </span>
+                    {reminder.message && <span className="muted"> · {reminder.message}</span>}
+                    {reminder.status !== "pending" && (
+                      <span className="badge badge-reminder-done">
+                        {REMINDER_STATUS_LABELS[reminder.status]}
+                      </span>
+                    )}
+                  </span>
+                  {reminder.status === "pending" && (
+                    <button onClick={() => completeReminder(reminder.id)} disabled={busy}>
+                      Concluir
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        <div className="form-row">
+          <label>
+            Data do follow-up
+            <input
+              type="date"
+              value={followUpDue}
+              onChange={(e) => setFollowUpDue(e.target.value)}
+            />
+          </label>
+          <label>
+            Mensagem (opcional)
+            <input
+              type="text"
+              maxLength={500}
+              placeholder="Ex.: perguntar sobre o processo"
+              value={followUpMessage}
+              onChange={(e) => setFollowUpMessage(e.target.value)}
+            />
+          </label>
+          <button onClick={scheduleFollowUp} disabled={busy || followUpDue === ""}>
+            Agendar acompanhamento
+          </button>
+        </div>
       </div>
 
       <div className="panel">

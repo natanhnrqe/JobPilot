@@ -52,9 +52,9 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 - ✅ **Edição manual** de dados pessoais, experiências, formação, habilidades, idiomas, projetos, preferências profissionais e respostas padrão para formulários
 - ✅ Rotas `GET/PUT /api/v1/profile`, `POST /api/v1/profile/cv` (prévia, não persiste) e `POST /api/v1/profile/cv/confirm`
 
-✅ **269 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, análise de compatibilidade, orçamento diário de IA, candidatura assistida, rascunho de candidatura com IA, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, perfil, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
+✅ **277 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, análise de compatibilidade, orçamento diário de IA, candidatura assistida, rascunho de candidatura com IA, lembretes de acompanhamento, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, perfil, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
 
-**Não implementado** (por design, por enquanto): envio automatizado nos portais (os alvos vedam bots — ver [`docs/PORTAIS.md`](docs/PORTAIS.md)), análise em lote, Playwright e lembretes.
+**Não implementado** (por design, por enquanto): envio automatizado nos portais (os alvos vedam bots — ver [`docs/PORTAIS.md`](docs/PORTAIS.md)), análise em lote e Playwright.
 
 ## Requisitos
 
@@ -185,6 +185,13 @@ As rotas são `GET /api/v1/profile`, `PUT /api/v1/profile`, `POST /api/v1/profil
 - ✅ **Nada de login/CAPTCHA automatizado**; o kit é somente leitura e o rascunho consome IA pelo teto diário
 - ✅ Rotas `GET /api/v1/jobs/:id/application-kit`, `POST /api/v1/jobs/:id/application/mark-sent`, `POST /api/v1/jobs/:id/application-draft` e `PATCH /api/v1/applications/:id` (com `evidenceUrl`)
 
+**Fase 5 — acompanhamento e consolidação (fatia 1)**
+
+- ✅ **Lembretes de acompanhamento** por candidatura: data, mensagem opcional e status (`pending`/`done`); nada é enviado ao portal nem muda o status sozinho
+- ✅ **Painel de pendências** no Dashboard: acompanhamentos vencidos aparecem em destaque (cor e selo “vencido”), ordenados antes dos próximos
+- ✅ **Detalhe da candidatura** lista os lembretes, destaca os vencidos e permite concluir com um clique
+- ✅ Rotas `POST /api/v1/applications/:id/follow-up` e `POST /api/v1/applications/:id/reminders/:id/complete`; `GET /api/v1/applications/:id` inclui `reminders`
+
 ## Página de Execuções
 
 Com o servidor rodando, abra **<http://localhost:5173/execucoes>** em desenvolvimento (`npm run dev`) ou **<http://127.0.0.1:3000/execucoes>** com a interface compilada (`npm start`), ou clique em **Execuções** no menu. A página mostra:
@@ -248,6 +255,6 @@ data/       banco, backups e logs (não versionado)
 1. **Fase 2** — coleta automática de vagas de fontes verificadas + agendamento às 18:00
 2. **Fase 3** — preferências de busca, perfil profissional com importação de CV, análise de compatibilidade por IA e teto diário de custo (fatias 1 a 4 concluídas)
 3. **Fase 4** — **candidatura assistida**: kit de dados, checklist, envio declarado e rascunho de carta/respostas por IA com citações verificadas; sem bot, login automatizado ou CAPTCHA contornado (os portais-alvo vedam automação — ver [`docs/PORTAIS.md`](docs/PORTAIS.md))
-4. **Fase 5** — lembretes de acompanhamento e consolidação
+4. **Fase 5** — lembretes de acompanhamento e consolidação (fatia 1 concluída: lembretes + painel de pendências)
 
 Regras permanentes: tentativa ≠ enviada; o JobPilot **nunca** envia candidatura sozinho nos portais-alvo; nada é declarado "suportado" sem verificação real.

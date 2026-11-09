@@ -158,6 +158,32 @@ export interface ApplicationDetail extends Application {
   };
   notes: Note[];
   events: Event[];
+  reminders: Reminder[];
+}
+
+export type ReminderKind = "follow_up" | "deadline" | "interview" | "custom";
+export type ReminderStatus = "pending" | "done" | "dismissed";
+
+/** Lembrete local de acompanhamento (Fase 5). Nada é enviado ao portal. */
+export interface Reminder {
+  id: number;
+  applicationId: number;
+  dueAt: string;
+  kind: ReminderKind;
+  message: string | null;
+  status: ReminderStatus;
+  triggeredAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Pendência exibida no dashboard (inclui dados da vaga/candidatura). */
+export interface PendingReminder extends Reminder {
+  overdue: boolean;
+  jobId: number;
+  jobTitle: string;
+  company: string | null;
+  applicationStatus: ApplicationStatus;
 }
 
 export type ChecklistStatus = "ok" | "warn" | "missing";
@@ -259,6 +285,7 @@ export interface ApplicationKit {
 export interface Dashboard {
   jobs: { total: number; deleted: number; byStatus: Record<string, number> };
   applications: { total: number; byStatus: Record<string, number> };
+  reminders: { pending: number; overdue: number; items: PendingReminder[] };
   activity: Array<Event & { jobTitle: string | null; company: string | null }>;
 }
 

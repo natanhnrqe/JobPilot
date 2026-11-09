@@ -384,6 +384,55 @@ button.link.danger {
   color: #14532d;
 }
 
+/* Pendências / lembretes (Fase 5) */
+.panel-overdue {
+  border-color: var(--warn-border);
+  box-shadow: inset 4px 0 0 var(--warn-border);
+}
+
+.card-number-danger {
+  color: var(--danger);
+}
+
+.reminder-list {
+  list-style: none;
+  margin: 10px 0;
+  padding: 0;
+}
+
+.reminder-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.reminder-list li.reminder-overdue {
+  background: var(--warn-bg);
+  border-left: 3px solid var(--warn-border);
+  border-radius: 4px;
+}
+
+.reminder-due-overdue {
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-overdue {
+  background: var(--danger);
+  color: #fff;
+}
+
+.badge-reminder-done {
+  background: #dcfce7;
+  color: #14532d;
+  margin-left: 8px;
+}
+
 /* Badges de status */
 .badge {
   display: inline-block;

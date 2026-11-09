@@ -25,6 +25,8 @@ import {
 } from "../repositories/applications.js";
 import { getJobRow } from "../repositories/jobs.js";
 import { listApplicationEvents, recordEvent } from "../repositories/events.js";
+import type { ReminderDto } from "../repositories/reminders.js";
+import { listApplicationReminders } from "./reminders.js";
 import type { ServiceContext } from "./context.js";
 import { toApplicationDto, type ApplicationDto } from "./jobs.js";
 
@@ -334,6 +336,7 @@ export interface ApplicationDetailDto extends ApplicationDto {
   };
   notes: Array<{ id: number; body: string; createdAt: string; updatedAt: string }>;
   events: ReturnType<typeof listApplicationEvents>;
+  reminders: ReminderDto[];
 }
 
 export function getApplicationDetail(ctx: ServiceContext, id: number): ApplicationDetailDto {
@@ -361,6 +364,7 @@ export function getApplicationDetail(ctx: ServiceContext, id: number): Applicati
       updatedAt: n.updated_at,
     })),
     events: listApplicationEvents(db, id),
+    reminders: listApplicationReminders(ctx, id),
   };
 }
 

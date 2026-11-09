@@ -88,6 +88,12 @@ export const applicationDraftRequestSchema = z.object({
   questions: z.array(z.string().trim().min(1).max(300)).max(10).optional(),
 });
 
+/** Lembrete de acompanhamento (Fase 5): data obrigatória, mensagem opcional. */
+export const createFollowUpSchema = z.object({
+  dueAt: z.string().trim().min(1, "Informe a data do acompanhamento.").max(40),
+  message: optionalText(500),
+});
+
 export const createNoteSchema = z.object({
   body: z.string().trim().min(1, "A nota não pode ser vazia.").max(5000),
   applicationId: z.coerce.number().int().positive().optional(),

@@ -11,6 +11,8 @@ export type EventType =
   | "application.status_changed"
   | "application.deleted"
   | "application.restored"
+  | "application.reminder_created"
+  | "application.reminder_completed"
   | "note.added";
 
 export interface EventInput {

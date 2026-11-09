@@ -5,6 +5,7 @@ import {
   APPLICATION_STATUS_LABELS,
   JOB_STATUS_LABELS,
   EVENT_TYPE_LABELS,
+  formatDate,
   formatDateTime,
   scoreTone,
 } from "../lib/format";
@@ -38,9 +39,49 @@ export default function Dashboard() {
           <span className="card-label">Candidaturas</span>
         </div>
         <div className="card">
+          <span className={`card-number ${data.reminders.overdue > 0 ? "card-number-danger" : ""}`}>
+            {data.reminders.overdue}
+          </span>
+          <span className="card-label">Acompanhamentos vencidos</span>
+        </div>
+        <div className="card">
           <span className="card-number">{data.jobs.deleted}</span>
           <span className="card-label">Vagas excluídas</span>
         </div>
+      </section>
+
+      <section className={`panel ${data.reminders.overdue > 0 ? "panel-overdue" : ""}`}>
+        <div className="page-head">
+          <h2>Pendências</h2>
+          <Link to="/candidaturas">Ver candidaturas</Link>
+        </div>
+        {data.reminders.items.length === 0 ? (
+          <p className="muted">
+            Nenhum acompanhamento pendente. Agende um follow-up no detalhe da candidatura.
+          </p>
+        ) : (
+          <ul className="reminder-list">
+            {data.reminders.items.map((reminder) => (
+              <li key={reminder.id} className={reminder.overdue ? "reminder-overdue" : ""}>
+                <span>
+                  {reminder.overdue && <span className="badge badge-overdue">vencido</span>}
+                  {reminder.overdue && " "}
+                  <Link to={`/candidaturas/${reminder.applicationId}`}>{reminder.jobTitle}</Link>
+                  {reminder.company && <span className="muted"> — {reminder.company}</span>}
+                  {reminder.message && <span className="muted"> · {reminder.message}</span>}
+                </span>
+                <span className={reminder.overdue ? "reminder-due-overdue" : "muted small"}>
+                  {reminder.overdue ? "venceu em " : "vence em "}
+                  {formatDate(reminder.dueAt)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="muted small">
+          Os lembretes são apenas locais: o JobPilot não envia nada ao portal nem muda o status da
+          candidatura sozinho.
+        </p>
       </section>
 
       <section className="panel">

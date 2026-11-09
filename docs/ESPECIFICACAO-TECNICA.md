@@ -401,8 +401,8 @@ CREATE TABLE credentials (
 | PATCH `[M1]`  | `/applications/:id`                              | edição + transição de status validada (`applied_at` é definido ao marcar `sent`)  |
 | DELETE `[M1]` | `/applications/:id`                              | exclusão (soft delete)                                                            |
 | POST          | `/applications/:id/events`                       | Fase 5 — evento manual                                                            |
-| POST          | `/applications/:id/follow-up`                    | Fase 5 — lembrete de acompanhamento                                               |
-| POST          | `/applications/:id/reminders/:id/complete`       | Fase 5 — lembretes                                                                |
+| POST ✅       | `/applications/:id/follow-up`                    | Fase 5 — lembrete de acompanhamento (implementado na fatia 5.1)                   |
+| POST ✅       | `/applications/:id/reminders/:id/complete`       | Fase 5 — concluir lembrete (implementado na fatia 5.1)                            |
 
 ### 4.4 Perfil — **Fase 3 (não implementar no Marco 1)**
 

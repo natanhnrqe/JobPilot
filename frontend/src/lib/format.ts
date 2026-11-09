@@ -7,6 +7,8 @@ import type {
   ContractType,
   GapSeverity,
   JobStatus,
+  ReminderKind,
+  ReminderStatus,
   RequirementKind,
   RequirementMatch,
   WorkMode,
@@ -75,13 +77,29 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   "job.created": "Vaga cadastrada",
   "job.status_changed": "Status da vaga alterado",
   "job.analysis_completed": "Análise de compatibilidade concluída",
+  "job.application_draft_generated": "Rascunho de candidatura gerado",
   "job.deleted": "Vaga excluída",
   "job.restored": "Vaga restaurada",
   "application.created": "Candidatura iniciada",
   "application.status_changed": "Status da candidatura alterado",
   "application.deleted": "Candidatura excluída",
   "application.restored": "Candidatura restaurada",
+  "application.reminder_created": "Acompanhamento agendado",
+  "application.reminder_completed": "Acompanhamento concluído",
   "note.added": "Nota adicionada",
+};
+
+export const REMINDER_KIND_LABELS: Record<ReminderKind, string> = {
+  follow_up: "Acompanhamento",
+  deadline: "Prazo",
+  interview: "Entrevista",
+  custom: "Personalizado",
+};
+
+export const REMINDER_STATUS_LABELS: Record<ReminderStatus, string> = {
+  pending: "Pendente",
+  done: "Concluído",
+  dismissed: "Dispensado",
 };
 
 export const AI_USAGE_KIND_LABELS: Record<AiUsageKind, string> = {
