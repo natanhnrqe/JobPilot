@@ -14,6 +14,7 @@ import { runsRouter, sourcesRouter } from "./routes/runs.js";
 import { preferencesRouter } from "./routes/preferences.js";
 import { profileRouter } from "./routes/profile.js";
 import { aiRouter } from "./routes/ai.js";
+import { exportsRouter } from "./routes/exports.js";
 import { systemRouter } from "./routes/system.js";
 import type { ServiceContext } from "../services/context.js";
 
@@ -61,6 +62,7 @@ export function createServer(
   api.use("/preferences", preferencesRouter(ctx));
   api.use("/profile", profileRouter(ctx));
   api.use("/ai", aiRouter(ctx));
+  api.use("/exports", exportsRouter(ctx));
   api.use("/", systemRouter(ctx));
   app.use("/api/v1", api);
 

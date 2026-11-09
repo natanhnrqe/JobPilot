@@ -258,6 +258,65 @@ export default function SettingsPage() {
       </section>
 
       <section className="panel">
+        <h2>Exportar histórico</h2>
+        <p className="muted small">
+          Baixe os dados locais em CSV (abre no Excel/LibreOffice) ou JSON. A exportação inclui
+          registros excluídos, com a data em <code>deleted_at</code>, para preservar o histórico.
+          Nada é enviado para a internet.
+        </p>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Dados</th>
+              <th>CSV</th>
+              <th>JSON</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Vagas</td>
+              <td>
+                <a href="/api/v1/exports/jobs?format=csv" download>
+                  Baixar CSV
+                </a>
+              </td>
+              <td>
+                <a href="/api/v1/exports/jobs?format=json" download>
+                  Baixar JSON
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td>Candidaturas</td>
+              <td>
+                <a href="/api/v1/exports/applications?format=csv" download>
+                  Baixar CSV
+                </a>
+              </td>
+              <td>
+                <a href="/api/v1/exports/applications?format=json" download>
+                  Baixar JSON
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td>Eventos</td>
+              <td>
+                <a href="/api/v1/exports/events?format=csv" download>
+                  Baixar CSV
+                </a>
+              </td>
+              <td>
+                <a href="/api/v1/exports/events?format=json" download>
+                  Baixar JSON
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section className="panel">
         <h2>Backup e restauração</h2>
         <p className="muted small">
           O backup é uma cópia íntegra e validada do banco SQLite (integridade verificada antes de

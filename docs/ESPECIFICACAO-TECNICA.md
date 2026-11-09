@@ -473,6 +473,17 @@ existem** e não serão criadas enquanto os portais-alvo vedarem bots.
 | POST `[M1]`    | `/restore`  | restaura de um backup: valida integridade, faz backup prévio automático, substitui e revalida |
 | GET/PUT `[M1]` | `/settings` | configurações locais essenciais (nome de exibição, fuso horário)                              |
 
+### 4.9 Exportação — **Fase 5.3**
+
+| Método | Rota                                    | Descrição                                                                 |
+| ------ | --------------------------------------- | ------------------------------------------------------------------------- |
+| GET    | `/exports/:entity?format=csv\|json`     | exporta `jobs`, `applications` ou `events`, incluindo excluídos; padrão CSV |
+
+- `Content-Disposition: attachment` com nome `jobpilot-<entity>-<data>.<formato>`.
+- CSV com BOM UTF-8, campos escapados (RFC 4180) e neutralização de fórmulas de planilha.
+- JSON: `{ exportedAt, entity, count, items }`.
+- Rota somente leitura: não altera o banco nem acessa a rede.
+
 ## 5. Estados e transições
 
 Implementar como **máquina de estados declarativa** em `domain/statuses.ts`: mapa `{status → [transições permitidas]}` + função `transition(entity, to, actor, meta)` que (a) valida, (b) grava, (c) insere `event`, (d) executa efeitos colaterais — tudo numa transação. A API responde `409` para transição inválida.
