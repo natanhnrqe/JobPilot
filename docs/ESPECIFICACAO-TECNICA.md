@@ -1,8 +1,8 @@
 # JobPilot — Especificação Técnica v1.1
 
-**Status:** Marco 1 (fundação, dados e dashboard manual) em implementação. Fases 2–5 permanecem como planejamento.
+**Status:** Fases 1–5 implementadas (atualizado em 2026-11-08). O envio automatizado nos portais permanece **fora de escopo** por decisão registrada em `docs/PORTAIS.md`.
 **Relação com o escopo:** detalha tecnicamente o `docs/ESCOPO.md` v1.1. Não substitui o escopo; quando divergirem, o escopo prevalece em requisitos funcionais.
-**Marco atual:** Marco 1 — 100% local e manual, conforme escopo fechado na Seção 13. **Nada das Fases 2–5 (IA, coleta, agendamento, Playwright, automação, CV, lembretes) é implementado ou simulado neste marco.**
+**Marco atual:** Fase 5 concluída — lembretes, painel de pendências, exportação CSV/JSON, notificação desktop opcional, revisão de segurança e documentação. As fases 1–4 (fundação, coleta, IA e candidatura assistida) também estão implementadas e cobertas por testes.
 
 ## 1. Princípios e decisões estruturais
 
@@ -192,9 +192,9 @@ CREATE TABLE backups (
 );
 ```
 
-### 3.3 Esquema dos marcos futuros (referência — NÃO criar no Marco 1)
+### 3.3 Esquema das fases 2–5 (implementado)
 
-As tabelas abaixo serão adicionadas por migrações posteriores. `jobs` e `applications` **não** são recriadas: elas ganham colunas novas (ex.: `dedupe_key`, `source_id`, `priority`, `next_follow_up_at`) por migrações incrementais.
+As tabelas abaixo foram adicionadas por migrações incrementais (002–010). `jobs` e `applications` **não** foram recriadas: ganharam colunas novas (ex.: `posted_at`, `source_id`, `external_id`, `contract_type_source`, `portal_key`, `evidence_url`) por migrações incrementais.
 
 ```sql
 PRAGMA journal_mode=WAL;
