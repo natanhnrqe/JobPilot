@@ -248,8 +248,8 @@ export default function SettingsPage() {
             </table>
             <p className="muted small">
               A contagem soma tokens de entrada e saída de todas as chamadas (extração de vagas,
-              currículo e análise). Quando o provedor não informa o consumo, o JobPilot estima ≈4
-              caracteres por token e marca a chamada como estimada
+              currículo, análise e rascunho de candidatura). Quando o provedor não informa o
+              consumo, o JobPilot estima ≈4 caracteres por token e marca a chamada como estimada
               {aiUsage.data.estimatedCalls > 0 ? ` (${aiUsage.data.estimatedCalls} neste dia)` : ""}
               . O teto é aplicado antes de cada chamada; ao atingi-lo, nada é enviado ao provedor.
             </p>

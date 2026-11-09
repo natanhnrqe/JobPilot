@@ -453,11 +453,12 @@ CREATE TABLE credentials (
 > prepara os dados e registra o envio declarado; **nunca** envia nada sozinho.
 > Ver `docs/PORTAIS.md`.
 
-| Método | Rota                                | Descrição                                                                    |
-| ------ | ----------------------------------- | ---------------------------------------------------------------------------- |
-| GET    | `/jobs/:id/application-kit`         | perfil + respostas + última análise + checklist + portal detectado           |
+| Método | Rota                                | Descrição                                                                      |
+| ------ | ----------------------------------- | ------------------------------------------------------------------------------ |
+| GET    | `/jobs/:id/application-kit`         | perfil + respostas + última análise + checklist + portal detectado             |
+| POST   | `/jobs/:id/application-draft`       | rascunho de carta/respostas por IA, com citações verificadas (não envia nada) |
 | POST   | `/jobs/:id/application/mark-sent`   | registra o envio **declarado** (data e evidência opcionais; cria a candidatura) |
-| PATCH  | `/applications/:id`                 | transições + `appliedAt` + `evidenceUrl` (só quando `sent`)                  |
+| PATCH  | `/applications/:id`                 | transições + `appliedAt` + `evidenceUrl` (só quando `sent`)                    |
 
 Rotas de automação (`/automation/*`, `/send-attempts`, `/portals`) **não
 existem** e não serão criadas enquanto os portais-alvo vedarem bots.
@@ -795,15 +796,18 @@ Validação: falha de schema → nova tentativa (máx 2) → grava `execution_lo
 
 `source_quote` obrigatório em tudo que vem do CV: sem citação, o item é descartado.
 
-### 8.5 Respostas de formulário
+### 8.5 Respostas de formulário e rascunho de candidatura (Fase 4)
 
-- A IA **redige** respostas a partir de `answers_json` + perfil + descrição da vaga.
-- Saída: `{ question, answer, used_profile_fields: ["..."], disclaimer?: string }`.
-- **Nunca** preencher campo que peça informação não existente no perfil (ex.: anos de experiência, salário esperado, autorização de trabalho, número de telefone novo). Nesses casos: `blocked` com motivo, e a candidatura vai para `needs_human`.
+- Implementado na fatia 3 como **rascunho assistido**: a IA redige a carta e as respostas a partir do perfil revisado, da vaga e das perguntas que a pessoa informar.
+- Saída: `{ cover_letter: [{text, evidence}], answers: [{question, answer, evidence}], warnings }`, com `evidence` no formato `{source: "cv" | "job", quote}`.
+- Toda citação é verificada literalmente contra o conteúdo enviado ao modelo; trechos sem citação comprovável são descartados e viram aviso.
+- O rascunho **não** é salvo como candidatura, **não** é enviado e **não** altera status: a pessoa revisa, edita e copia.
+- Regra mantida: nunca preencher informação ausente no perfil (anos de experiência, salário, autorização etc.). O modelo deve usar `warnings` em vez de afirmar o que não está comprovado.
+- O rascunho consome o teto diário de IA com o tipo `draft`.
 
 ### 8.6 Prompt engineering
 
-- Prompts em arquivos versionados (`ai/prompts/*.md`) com `PROMPT_VERSION` constante.
+- Prompts em módulos versionados (`src/ai/prompts.ts`) com constante de versão.
 - Instruções de sistema fixas: papel, idioma (pt-BR), formato JSON estrito, "não invente", "responda null quando não souber".
 - `temperature` baixo (0–0.3) para extração/análise; mais alto só para redação.
 - Retry com backoff; timeout 60 s; nunca re-tentar sem limite.
@@ -1021,7 +1025,7 @@ Regras (válidas desde o Marco 1):
 | --- | --------------------------------------------- | ---------------------------------------------------------------------- |
 | 4.1 | Kit de candidatura + detecção de portal       | portal e checklist visíveis; kit é somente leitura e não consome IA    |
 | 4.2 | Envio declarado + evidência                   | confirmar cria/avança a candidatura para `sent` com data; sem duplicata |
-| 4.3 | Respostas sugeridas por IA (opcional)         | rascunho com citação e revisão humana; nada é enviado automaticamente  |
+| 4.3 | Respostas sugeridas por IA (opcional)         | rascunho com citação literal verificada e revisão humana; nada é enviado nem salvo como candidatura |
 | 4.4 | Portais e segurança                           | `docs/PORTAIS.md`; nenhum login, CAPTCHA ou scraping desses portais    |
 | 4.5 | Revisão de segurança e regressão              | sem segredos; kit não gasta IA; ToS reverificados antes de mudanças    |
 

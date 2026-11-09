@@ -4,6 +4,7 @@ export type EventType =
   | "job.created"
   | "job.status_changed"
   | "job.analysis_completed"
+  | "job.application_draft_generated"
   | "job.deleted"
   | "job.restored"
   | "application.created"

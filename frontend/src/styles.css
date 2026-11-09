@@ -917,6 +917,36 @@ code {
   }
 }
 
+/* Rascunho de candidatura com IA */
+.draft-letter {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.draft-block {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.draft-block p {
+  margin: 0 0 8px;
+}
+
+.draft-evidence {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 0.9em;
+}
+
+.draft-evidence q {
+  color: var(--muted);
+}
+
 @media (max-width: 720px) {
   .analysis-head {
     flex-direction: column;

@@ -83,6 +83,11 @@ export const markApplicationSentSchema = z.object({
   evidenceUrl: optionalUrl,
 });
 
+/** Rascunho de candidatura com IA: perguntas opcionais do formulário do portal. */
+export const applicationDraftRequestSchema = z.object({
+  questions: z.array(z.string().trim().min(1).max(300)).max(10).optional(),
+});
+
 export const createNoteSchema = z.object({
   body: z.string().trim().min(1, "A nota não pode ser vazia.").max(5000),
   applicationId: z.coerce.number().int().positive().optional(),

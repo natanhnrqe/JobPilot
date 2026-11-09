@@ -23,7 +23,7 @@ compatíveis.
 Fontes: páginas públicas de termos de uso de cada portal. Elas podem mudar;
 **reverifique antes de qualquer mudança de comportamento**.
 
-## O que o JobPilot faz hoje (fatias 1 e 2)
+## O que o JobPilot faz hoje (fatias 1 a 3)
 
 - Detecta o portal pela URL da vaga (`backend/src/domain/portals.ts`) e exibe o
   aviso correto. Todos os portais conhecidos são `manualOnly`.
@@ -40,6 +40,12 @@ Fontes: páginas públicas de termos de uso de cada portal. Elas podem mudar;
   (`portal_key`) e aceita um `evidence_url` opcional (confirmação, e-mail ou
   print). A evidência pode ser corrigida depois em `PATCH /applications/:id`,
   mas só quando a candidatura está `sent`.
+- **Rascunho com IA** (`POST /api/v1/jobs/:id/application-draft`, migração 009):
+  gera carta e respostas a partir do perfil, da vaga e das perguntas do
+  formulário. Cada trecho precisa de **citação literal** do perfil (`cv`) ou da
+  vaga (`job`); o sistema verifica e descarta o que não for comprovável. O
+  rascunho não é salvo como candidatura, não é enviado e conta no teto diário
+  de IA (tipo `draft`).
 
 O kit é somente leitura e **não consome IA** (não gasta orçamento).
 
@@ -61,7 +67,6 @@ verificar termos, robots/limites e registrar a evidência antes de habilitar.
 ## Próximos passos da Fase 4
 
 1. ~~**Rastreio de evidência**~~: concluído — portal e link de evidência ficam na candidatura.
-2. **Respostas sugeridas por IA (opcional)**: rascunho de carta/respostas a
-   partir do perfil + vaga, sempre com revisão humana e sem inventar dados.
+2. ~~**Respostas sugeridas por IA (opcional)**~~: concluído — rascunho com citações verificadas e revisão humana.
 3. **Portais com API oficial**: se algum dia houver um programa oficial para
    candidatos, reavaliar automação — hoje não é o caso dos quatro alvos.

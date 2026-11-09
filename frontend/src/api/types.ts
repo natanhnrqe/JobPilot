@@ -177,6 +177,36 @@ export interface ApplicationKitChecklistItem {
   hint: string;
 }
 
+/** Rascunho de candidatura gerado por IA (Fase 4, fatia 3). */
+export interface DraftEvidence {
+  source: "cv" | "job";
+  quote: string;
+}
+
+export interface ApplicationDraftParagraph {
+  text: string;
+  evidence: DraftEvidence[];
+}
+
+export interface ApplicationDraftAnswer {
+  question: string;
+  answer: string;
+  evidence: DraftEvidence[];
+}
+
+export interface ApplicationDraft {
+  jobId: number;
+  model: string;
+  promptVersion: string;
+  generatedAt: string;
+  coverLetter: ApplicationDraftParagraph[];
+  coverLetterText: string;
+  answers: ApplicationDraftAnswer[];
+  warnings: string[];
+  tokensIn: number | null;
+  tokensOut: number | null;
+}
+
 export interface ApplicationKitFit {
   version: number;
   score: number;
@@ -270,7 +300,7 @@ export interface ExtractionStatus {
   dailyBudgetTokens: number;
 }
 
-export type AiUsageKind = "extraction" | "cv" | "analysis";
+export type AiUsageKind = "extraction" | "cv" | "analysis" | "draft";
 
 export interface AiUsageTotals {
   calls: number;

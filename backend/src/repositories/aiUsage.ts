@@ -9,7 +9,7 @@ import type { Db } from "../db/connection.js";
  * estimado é conservador e nunca subestima grosseiramente o consumo.
  */
 
-export const AI_USAGE_KINDS = ["extraction", "cv", "analysis"] as const;
+export const AI_USAGE_KINDS = ["extraction", "cv", "analysis", "draft"] as const;
 export type AiUsageKind = (typeof AI_USAGE_KINDS)[number];
 
 export interface AiUsageInsert {
@@ -90,6 +90,7 @@ export function getTodayAiUsage(db: Db, budgetTokens: number, now = new Date()):
     extraction: emptyTotals(),
     cv: emptyTotals(),
     analysis: emptyTotals(),
+    draft: emptyTotals(),
   };
   const total = emptyTotals();
 

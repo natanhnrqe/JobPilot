@@ -1,6 +1,7 @@
 import { AppError, NotFoundError } from "../domain/errors.js";
 import type { AiCompletion, AiProvider } from "../ai/provider.js";
 import { jobAnalysisSchema, type JobAnalysis } from "../ai/schemas.js";
+import { stripCodeFence } from "../ai/json.js";
 import {
   ANALYSIS_PROMPT_VERSION,
   ANALYSIS_SYSTEM_PROMPT,
@@ -17,6 +18,7 @@ import { getProfile } from "../repositories/profile.js";
 import { insertAnalysis, toAnalysisDto, type JobAnalysisDto } from "../repositories/analyses.js";
 import { recordEvent } from "../repositories/events.js";
 import { completeWithBudget } from "./aiUsage.js";
+import { requireAiProvider } from "./aiProvider.js";
 import type { ServiceContext } from "./context.js";
 
 /**
@@ -31,7 +33,7 @@ const MAX_DESCRIPTION_CHARS = 20_000;
 const MIN_DESCRIPTION_CHARS = 30;
 
 export async function analyzeJob(ctx: ServiceContext, jobId: number): Promise<JobAnalysisDto> {
-  const provider = requireProvider(ctx);
+  const provider = requireAiProvider(ctx, "Análise");
   const db = ctx.holder.get();
 
   const job = getJobRow(db, jobId);
@@ -110,17 +112,6 @@ export async function analyzeJob(ctx: ServiceContext, jobId: number): Promise<Jo
 
     return toAnalysisDto(row);
   });
-}
-
-function requireProvider(ctx: ServiceContext): AiProvider {
-  if (!ctx.ai) {
-    throw new AppError(
-      "AI_UNAVAILABLE",
-      503,
-      "Análise por IA indisponível: nenhuma chave configurada. Defina AI_API_KEY no arquivo .env (o restante do JobPilot funciona normalmente).",
-    );
-  }
-  return ctx.ai;
 }
 
 /** Pede a análise ao provedor, valida com zod e re-tenta uma vez em resposta inválida. */
@@ -204,10 +195,4 @@ function toAnalysisData(analysis: JobAnalysis): JobAnalysisData {
     recommendApply: analysis.recommend_apply,
     confidence: analysis.confidence,
   };
-}
-
-/** Remove cercas de código ("```json ... ```") que alguns modelos acrescentam. */
-function stripCodeFence(text: string): string {
-  const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/.exec(text.trim());
-  return fenced?.[1] ?? text.trim();
 }

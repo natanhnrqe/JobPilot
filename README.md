@@ -52,7 +52,7 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 - ✅ **Edição manual** de dados pessoais, experiências, formação, habilidades, idiomas, projetos, preferências profissionais e respostas padrão para formulários
 - ✅ Rotas `GET/PUT /api/v1/profile`, `POST /api/v1/profile/cv` (prévia, não persiste) e `POST /api/v1/profile/cv/confirm`
 
-✅ **255 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, análise de compatibilidade, orçamento diário de IA, candidatura assistida, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, perfil, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
+✅ **269 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, análise de compatibilidade, orçamento diário de IA, candidatura assistida, rascunho de candidatura com IA, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, perfil, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
 
 **Não implementado** (por design, por enquanto): envio automatizado nos portais (os alvos vedam bots — ver [`docs/PORTAIS.md`](docs/PORTAIS.md)), análise em lote, Playwright e lembretes.
 
@@ -166,14 +166,14 @@ As rotas são `GET /api/v1/profile`, `PUT /api/v1/profile`, `POST /api/v1/profil
 
 **Fase 3 — orçamento diário de IA (fatia 4)**
 
-- ✅ **Teto diário de tokens** configurável em `AI_DAILY_BUDGET` (0 = sem limite), somando entrada + saída de **todas** as chamadas: extração de vagas, importação de currículo e análise de compatibilidade
+- ✅ **Teto diário de tokens** configurável em `AI_DAILY_BUDGET` (0 = sem limite), somando entrada + saída de **todas** as chamadas: extração de vagas, importação de currículo, análise de compatibilidade e rascunho de candidatura
 - ✅ **Bloqueio antes de gastar**: ao atingir o teto, a próxima chamada é recusada com `429 AI_BUDGET_EXCEEDED` e nada é enviado ao provedor; o aviso fica visível na UI
 - ✅ **Registro por chamada** em `ai_usage`: tipo, modelo, tokens de entrada/saída, data e marcação de estimativa quando o provedor não informa o consumo
 - ✅ **Uso visível em Configurações**: tokens usados/restantes no dia, barra de progresso e detalhamento por tipo; o detalhe da vaga também avisa e desabilita o botão quando o teto foi atingido
 - ✅ **Vira o dia** à meia-noite local (mesmo fuso da tarefa das 18:00) — o contador zera sozinho
 - ✅ Rota `GET /api/v1/ai/usage` (somente leitura)
 
-**Fase 4 — candidatura assistida (fatias 1 e 2)**
+**Fase 4 — candidatura assistida (fatias 1 a 3)**
 
 - ✅ **Sem envio automático**: os portais-alvo (Gupy, LinkedIn, Indeed e Glassdoor) vedam bots/automação; o JobPilot prepara os dados e **você** revisa e clica em enviar. Ver [`docs/PORTAIS.md`](docs/PORTAIS.md)
 - ✅ **Kit de candidatura** no detalhe da vaga: portal detectado, dados de contato/links/resumo do perfil, habilidades, idiomas e respostas salvas — cada campo com botão **Copiar**
@@ -181,8 +181,9 @@ As rotas são `GET /api/v1/profile`, `PUT /api/v1/profile`, `POST /api/v1/profil
 - ✅ **Última análise** no kit: score, lacunas e requisitos obrigatórios que o perfil não atende
 - ✅ **“Confirmo que enviei”** registra o envio **declarado** e a data (cria a candidatura se ainda não existir) — sem chamada ao portal
 - ✅ **Portal e evidência**: o envio grava o portal detectado e aceita um link de evidência (confirmação, e-mail ou print); a evidência pode ser corrigida depois
-- ✅ **Nada de login/CAPTCHA automatizado**; o kit é somente leitura e não consome IA
-- ✅ Rotas `GET /api/v1/jobs/:id/application-kit`, `POST /api/v1/jobs/:id/application/mark-sent` e `PATCH /api/v1/applications/:id` (com `evidenceUrl`)
+- ✅ **Rascunho com IA (opcional)**: gera carta e respostas a partir do perfil + vaga + perguntas do formulário; cada trecho exige **citação literal verificada** do perfil ou da vaga, e o sistema descarta o que não for comprovável. A pessoa revisa, edita e copia — nada é enviado nem salvo como candidatura
+- ✅ **Nada de login/CAPTCHA automatizado**; o kit é somente leitura e o rascunho consome IA pelo teto diário
+- ✅ Rotas `GET /api/v1/jobs/:id/application-kit`, `POST /api/v1/jobs/:id/application/mark-sent`, `POST /api/v1/jobs/:id/application-draft` e `PATCH /api/v1/applications/:id` (com `evidenceUrl`)
 
 ## Página de Execuções
 
@@ -246,7 +247,7 @@ data/       banco, backups e logs (não versionado)
 
 1. **Fase 2** — coleta automática de vagas de fontes verificadas + agendamento às 18:00
 2. **Fase 3** — preferências de busca, perfil profissional com importação de CV, análise de compatibilidade por IA e teto diário de custo (fatias 1 a 4 concluídas)
-3. **Fase 4** — **candidatura assistida**: kit de dados, checklist e envio declarado pelo usuário; sem bot, login automatizado ou CAPTCHA contornado (os portais-alvo vedam automação — ver [`docs/PORTAIS.md`](docs/PORTAIS.md))
+3. **Fase 4** — **candidatura assistida**: kit de dados, checklist, envio declarado e rascunho de carta/respostas por IA com citações verificadas; sem bot, login automatizado ou CAPTCHA contornado (os portais-alvo vedam automação — ver [`docs/PORTAIS.md`](docs/PORTAIS.md))
 4. **Fase 5** — lembretes de acompanhamento e consolidação
 
 Regras permanentes: tentativa ≠ enviada; o JobPilot **nunca** envia candidatura sozinho nos portais-alvo; nada é declarado "suportado" sem verificação real.

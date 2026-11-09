@@ -3,9 +3,11 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import type {
   AiUsage,
+  ApplicationDraft,
   ApplicationKit,
   ApplicationStatus,
   ChecklistStatus,
+  DraftEvidence,
   ExtractionStatus,
   JobAnalysis,
   JobDetail,
@@ -44,6 +46,10 @@ export default function JobDetail() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [evidenceInput, setEvidenceInput] = useState("");
+  const [draftQuestions, setDraftQuestions] = useState("");
+  const [draft, setDraft] = useState<ApplicationDraft | null>(null);
+  const [draftBusy, setDraftBusy] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
 
   if (loading) return <p className="muted">Carregando…</p>;
   if (error) return <div className="alert alert-error">{error.message}</div>;
@@ -119,6 +125,27 @@ export default function JobDetail() {
       api.post(`/jobs/${jobId}/application/mark-sent`, evidenceUrl ? { evidenceUrl } : {}),
     );
     setEvidenceInput("");
+  }
+
+  async function generateDraft() {
+    setDraftBusy(true);
+    setDraftError(null);
+    try {
+      const questions = draftQuestions
+        .split("\n")
+        .map((question) => question.trim())
+        .filter((question) => question !== "");
+      const result = await api.post<ApplicationDraft>(
+        `/jobs/${jobId}/application-draft`,
+        questions.length > 0 ? { questions } : {},
+      );
+      setDraft(result);
+      reloadUsage();
+    } catch (err) {
+      setDraftError(errorMessage(err));
+    } finally {
+      setDraftBusy(false);
+    }
   }
 
   async function deleteJob() {
@@ -616,6 +643,90 @@ export default function JobDetail() {
                 )}
               </>
             )}
+
+            <h3>Rascunho com IA (opcional)</h3>
+            <p className="muted small">
+              Gera uma sugestão de carta e de respostas a partir do seu perfil e desta vaga. Cada
+              trecho cita a fonte; <strong>revise e edite</strong> antes de usar. O JobPilot não
+              envia nada.
+            </p>
+            {!aiStatus?.enabled && (
+              <p className="muted small">
+                IA desativada: defina <code>AI_API_KEY</code> no <code>.env</code> para gerar
+                rascunhos.
+              </p>
+            )}
+            <div className="form-row">
+              <label>
+                Perguntas do formulário (uma por linha, opcional)
+                <textarea
+                  rows={3}
+                  placeholder="Ex.: Por que você quer trabalhar nesta empresa?"
+                  value={draftQuestions}
+                  onChange={(e) => setDraftQuestions(e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="row-actions">
+              <button onClick={generateDraft} disabled={draftBusy || !aiStatus?.enabled}>
+                {draftBusy ? "Gerando…" : "Gerar rascunho com IA"}
+              </button>
+              {draft && (
+                <button className="secondary" onClick={() => setDraft(null)}>
+                  Limpar rascunho
+                </button>
+              )}
+            </div>
+            {draftError && <div className="alert alert-error">{draftError}</div>}
+            {draft && (
+              <>
+                <p className="muted small">
+                  Modelo {draft.model} · {formatDateTime(draft.generatedAt)}
+                  {draft.tokensIn !== null && draft.tokensOut !== null && (
+                    <> · {draft.tokensIn + draft.tokensOut} tokens</>
+                  )}
+                </p>
+                {draft.warnings.length > 0 && (
+                  <div className="alert alert-warn">
+                    <strong>Atenção:</strong>
+                    <ul>
+                      {draft.warnings.map((warning, index) => (
+                        <li key={`${index}-${warning}`}>{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <h4>Carta de apresentação</h4>
+                <div className="draft-letter">
+                  {draft.coverLetter.map((paragraph, index) => (
+                    <div key={`${index}-${paragraph.text}`} className="draft-block">
+                      <p>{paragraph.text}</p>
+                      <EvidenceList evidence={paragraph.evidence} />
+                    </div>
+                  ))}
+                </div>
+                <div className="row-actions">
+                  <CopyButton label="Copiar carta" value={draft.coverLetterText} />
+                </div>
+                {draft.answers.length > 0 && (
+                  <>
+                    <h4>Respostas sugeridas</h4>
+                    {draft.answers.map((answer, index) => (
+                      <div key={`${index}-${answer.question}`} className="draft-block">
+                        <p>
+                          <strong>{answer.question}</strong>
+                        </p>
+                        <p>{answer.answer}</p>
+                        <EvidenceList evidence={answer.evidence} />
+                        <div className="row-actions">
+                          <CopyButton label="Copiar resposta" value={answer.answer} />
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </>
+            )}
           </>
         )}
       </div>
@@ -661,6 +772,41 @@ function CopyField({ label, value }: { label: string; value: string }) {
         {copied ? "Copiado" : "Copiar"}
       </button>
     </div>
+  );
+}
+
+/** Botão de copiar texto livre (carta, resposta etc.). */
+function CopyButton({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <button className="secondary" onClick={copy}>
+      {copied ? "Copiado" : label}
+    </button>
+  );
+}
+
+/** Citações que comprovam um trecho do rascunho (perfil ou vaga). */
+function EvidenceList({ evidence }: { evidence: DraftEvidence[] }) {
+  return (
+    <ul className="draft-evidence">
+      {evidence.map((item, index) => (
+        <li key={`${index}-${item.source}-${item.quote}`}>
+          <span className="badge">{item.source === "cv" ? "Perfil" : "Vaga"}</span>{" "}
+          <q>{item.quote}</q>
+        </li>
+      ))}
+    </ul>
   );
 }
 

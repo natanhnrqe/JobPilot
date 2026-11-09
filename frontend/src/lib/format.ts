@@ -88,6 +88,7 @@ export const AI_USAGE_KIND_LABELS: Record<AiUsageKind, string> = {
   extraction: "Extração de vagas",
   cv: "Importação de currículo",
   analysis: "Análise de compatibilidade",
+  draft: "Rascunho de candidatura",
 };
 
 export const ANALYSIS_CONFIDENCE_LABELS: Record<AnalysisConfidence, string> = {

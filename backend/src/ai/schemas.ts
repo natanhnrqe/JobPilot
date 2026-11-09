@@ -182,6 +182,40 @@ export const jobAnalysisSchema = z.object({
 
 export type JobAnalysis = z.infer<typeof jobAnalysisSchema>;
 
+/**
+ * Saída estruturada do rascunho de candidatura (Fase 4, fatia 3).
+ *
+ * Cada parágrafo/resposta exige ao menos uma citação (`evidence`) com trecho
+ * literal do perfil ou da vaga. O serviço verifica as citações e descarta o
+ * que não for comprovável — a IA não pode inventar qualificações.
+ */
+const draftEvidenceSchema = z.object({
+  source: z.enum(["cv", "job"]),
+  quote: z.string().trim().min(1).max(500),
+});
+
+const draftParagraphSchema = z.object({
+  text: z.string().trim().min(1).max(1200),
+  evidence: z.array(draftEvidenceSchema).min(1).max(4),
+});
+
+export const applicationDraftSchema = z.object({
+  cover_letter: z.array(draftParagraphSchema).min(1).max(5),
+  answers: z
+    .array(
+      z.object({
+        question: z.string().trim().min(1).max(300),
+        answer: z.string().trim().min(1).max(1500),
+        evidence: z.array(draftEvidenceSchema).min(1).max(4),
+      }),
+    )
+    .max(10)
+    .default([]),
+  warnings: z.array(z.string().trim().min(1).max(300)).max(10).default([]),
+});
+
+export type ApplicationDraftAi = z.infer<typeof applicationDraftSchema>;
+
 /** Normaliza a data de publicação: ISO ou YYYY-MM-DD; qualquer outra coisa → null (nunca "agora"). */
 export function normalizePostedAt(value: string | null | undefined): string | null {
   if (!value) return null;

@@ -140,6 +140,35 @@ export const VALID_JOB_ANALYSIS = JSON.stringify({
   confidence: "high",
 });
 
+/** Payload JSON válido do rascunho de candidatura (Fase 4, fatia 3). */
+export const VALID_APPLICATION_DRAFT = JSON.stringify({
+  cover_letter: [
+    {
+      text: "Sou Desenvolvedor Backend com foco em Node.js e acompanhei com interesse a vaga de Desenvolvedor Backend.",
+      evidence: [
+        { source: "cv", quote: "Desenvolvedor backend com foco em Node.js" },
+        { source: "job", quote: "Desenvolvedor Backend" },
+      ],
+    },
+    {
+      text: "A modalidade 100% remota está alinhada com o formato de trabalho que procuro.",
+      evidence: [{ source: "job", quote: "Vaga 100% remota" }],
+    },
+  ],
+  answers: [
+    {
+      question: "Por que você quer trabalhar nesta empresa?",
+      answer:
+        "Quero contribuir com a experiência que adquiri como Desenvolvedor Backend e seguir evoluindo em Node.js.",
+      evidence: [
+        { source: "cv", quote: "Desenvolvedor Backend" },
+        { source: "cv", quote: "foco em Node.js" },
+      ],
+    },
+  ],
+  warnings: ["A vaga pede 3 anos de experiencia; o perfil nao informa o total."],
+});
+
 /** Segunda versão (re-análise) com score menor. */
 export const VALID_JOB_ANALYSIS_2 = JSON.stringify({
   score: 64,

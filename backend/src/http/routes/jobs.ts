@@ -6,10 +6,12 @@ import {
   createJobSchema,
   updateJobSchema,
   markApplicationSentSchema,
+  applicationDraftRequestSchema,
 } from "../schemas.js";
 import * as jobsService from "../../services/jobs.js";
 import { createApplication, markApplicationSent } from "../../services/applications.js";
 import { buildApplicationKit } from "../../services/applicationKit.js";
+import { generateApplicationDraft } from "../../services/applicationDraft.js";
 import { addNote } from "../../services/notes.js";
 import { analyzeJob } from "../../services/analysis.js";
 import { getActivity } from "../../services/dashboard.js";
@@ -71,6 +73,17 @@ export function jobsRouter(ctx: ServiceContext): Router {
   router.get("/:id/application-kit", (req, res) => {
     const id = parse(zId, req.params.id);
     res.json(buildApplicationKit(ctx, id));
+  });
+
+  // POST /api/v1/jobs/:id/application-draft — rascunho por IA (não envia nada)
+  router.post("/:id/application-draft", async (req, res, next) => {
+    try {
+      const id = parse(zId, req.params.id);
+      const { questions } = parse(applicationDraftRequestSchema, req.body ?? {});
+      res.status(201).json(await generateApplicationDraft(ctx, id, questions ?? []));
+    } catch (err) {
+      next(err);
+    }
   });
 
   // POST /api/v1/jobs/:id/application — cria a candidatura (1:1)
