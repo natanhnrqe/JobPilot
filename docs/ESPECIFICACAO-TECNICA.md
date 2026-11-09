@@ -1044,9 +1044,9 @@ Regras (válidas desde o Marco 1):
 
 | #   | Tarefa                                          | CA                                                 |
 | --- | ----------------------------------------------- | -------------------------------------------------- |
-| 5.1 | Lembretes + painel de pendências                | follow-up vencido aparece em destaque              |
-| 5.2 | Canal de notificação escolhido (Seção 14)       | lembrete chega no canal; falha gera log, não crash |
-| 5.3 | Histórico consolidado e exportação              | exportar CSV/JSON de vagas, candidaturas e eventos |
+| 5.1 ✅ | Lembretes + painel de pendências                | follow-up vencido aparece em destaque              |
+| 5.2 ✅ | Canal de notificação escolhido (Seção 14)       | lembrete chega no canal; falha gera log, não crash |
+| 5.3 ✅ | Histórico consolidado e exportação              | exportar CSV/JSON de vagas, candidaturas e eventos |
 | 5.4 | Revisão de segurança e regressão                | checklist completo; sem segredos; restore testado  |
 | 5.5 | Documentação (instalação, uso, backup, portais) | usuário novo instala seguindo só o README          |
 

@@ -11,6 +11,12 @@ import type {
 import { SEARCH_CONTRACT_TYPES } from "../api/types";
 import { useFetch, errorMessage } from "../lib/useFetch";
 import {
+  notificationPermission,
+  requestNotificationPermission,
+  sendDesktopNotification,
+  type NotificationState,
+} from "../lib/notifications";
+import {
   AI_USAGE_KIND_LABELS,
   CONTRACT_TYPE_LABELS,
   formatBytes,
@@ -30,6 +36,10 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [notificationState, setNotificationState] = useState<NotificationState>(() =>
+    notificationPermission(),
+  );
+  const [notificationNote, setNotificationNote] = useState<string | null>(null);
 
   useEffect(() => {
     if (settings.data) {
@@ -105,6 +115,59 @@ export default function SettingsPage() {
       return `Banco restaurado de "${fileName}". Backup prévio automático: ${result.preRestoreBackup}. Vagas: ${result.jobs}, candidaturas: ${result.applications}, notas: ${result.notes}, eventos: ${result.events}.`;
     });
   }
+
+  async function enableNotifications() {
+    setError(null);
+    setMessage(null);
+    setNotificationNote(null);
+    const next = await requestNotificationPermission();
+    setNotificationState(next);
+
+    if (next === "granted") {
+      const ok = sendDesktopNotification("JobPilot", {
+        body: "Notificações ativadas. Lembretes vencidos aparecerão aqui.",
+      });
+      setNotificationNote(
+        ok
+          ? "Notificações ativadas neste navegador."
+          : "Permissão concedida, mas o teste não pôde ser exibido (veja o console).",
+      );
+      return;
+    }
+    if (next === "denied") {
+      setNotificationNote(
+        "Permissão bloqueada pelo navegador. Libere as notificações nas configurações do site; enquanto isso, as pendências continuam no dashboard.",
+      );
+      return;
+    }
+    if (next === "unsupported") {
+      setNotificationNote(
+        "Este navegador não oferece notificações desktop. O painel de pendências continua funcionando.",
+      );
+      return;
+    }
+    setNotificationNote(
+      "Permissão não concedida. O painel de pendências continua funcionando normalmente.",
+    );
+  }
+
+  function testNotification() {
+    const ok = sendDesktopNotification("JobPilot — teste", {
+      body: "Se você está vendo esta mensagem, as notificações estão funcionando.",
+    });
+    setNotificationNote(
+      ok
+        ? "Notificação de teste enviada."
+        : "Não foi possível exibir a notificação (veja o console do navegador).",
+    );
+  }
+
+  const notificationStateLabel: Record<NotificationState, string> = {
+    granted: "Ativadas",
+    denied: "Bloqueadas pelo navegador",
+    default: "Ainda não ativadas",
+    unsupported: "Não suportadas neste navegador",
+  };
 
   return (
     <div>
@@ -314,6 +377,31 @@ export default function SettingsPage() {
             </tr>
           </tbody>
         </table>
+      </section>
+
+      <section className="panel">
+        <h2>Notificações de lembretes</h2>
+        <p className="muted small">
+          O canal principal é o painel de pendências do Dashboard. Opcionalmente, o navegador pode
+          exibir uma notificação desktop quando um acompanhamento estiver vencido — no máximo uma
+          vez por lembrete por dia. Nada sai da sua máquina.
+        </p>
+        <p>
+          Status: <strong>{notificationStateLabel[notificationState]}</strong>
+        </p>
+        <div className="status-actions">
+          {notificationState === "default" && (
+            <button onClick={() => void enableNotifications()}>Ativar notificações</button>
+          )}
+          {notificationState === "granted" && (
+            <button onClick={testNotification}>Testar notificação</button>
+          )}
+        </div>
+        {notificationNote && <p className="muted small">{notificationNote}</p>}
+        <p className="muted small">
+          Se a permissão for negada ou a notificação falhar, o erro fica apenas no console do
+          navegador e o JobPilot continua funcionando.
+        </p>
       </section>
 
       <section className="panel">

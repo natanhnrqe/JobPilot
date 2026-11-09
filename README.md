@@ -185,7 +185,7 @@ As rotas são `GET /api/v1/profile`, `PUT /api/v1/profile`, `POST /api/v1/profil
 - ✅ **Nada de login/CAPTCHA automatizado**; o kit é somente leitura e o rascunho consome IA pelo teto diário
 - ✅ Rotas `GET /api/v1/jobs/:id/application-kit`, `POST /api/v1/jobs/:id/application/mark-sent`, `POST /api/v1/jobs/:id/application-draft` e `PATCH /api/v1/applications/:id` (com `evidenceUrl`)
 
-**Fase 5 — acompanhamento e consolidação (fatias 1 e 2)**
+**Fase 5 — acompanhamento e consolidação (fatias 1 a 3)**
 
 - ✅ **Lembretes de acompanhamento** por candidatura: data, mensagem opcional e status (`pending`/`done`); nada é enviado ao portal nem muda o status sozinho
 - ✅ **Painel de pendências** no Dashboard: acompanhamentos vencidos aparecem em destaque (cor e selo “vencido”), ordenados antes dos próximos
@@ -193,6 +193,8 @@ As rotas são `GET /api/v1/profile`, `PUT /api/v1/profile`, `POST /api/v1/profil
 - ✅ Rotas `POST /api/v1/applications/:id/follow-up` e `POST /api/v1/applications/:id/reminders/:id/complete`; `GET /api/v1/applications/:id` inclui `reminders`
 - ✅ **Exportação em Configurações**: vagas, candidaturas e eventos em **CSV** ou **JSON**, incluindo registros excluídos (histórico preservado)
 - ✅ CSV seguro: campos escapados e neutralização de fórmulas de planilha; rota somente leitura `GET /api/v1/exports/:entity?format=csv|json`
+- ✅ **Canal de notificação**: painel de pendências + **notificação desktop opcional** (ativação em Configurações); no máximo uma vez por lembrete por dia
+- ✅ Falha de permissão ou de exibição da notificação fica **apenas no console** — o dashboard e o restante do app continuam funcionando
 
 ## Página de Execuções
 
@@ -257,6 +259,6 @@ data/       banco, backups e logs (não versionado)
 1. **Fase 2** — coleta automática de vagas de fontes verificadas + agendamento às 18:00
 2. **Fase 3** — preferências de busca, perfil profissional com importação de CV, análise de compatibilidade por IA e teto diário de custo (fatias 1 a 4 concluídas)
 3. **Fase 4** — **candidatura assistida**: kit de dados, checklist, envio declarado e rascunho de carta/respostas por IA com citações verificadas; sem bot, login automatizado ou CAPTCHA contornado (os portais-alvo vedam automação — ver [`docs/PORTAIS.md`](docs/PORTAIS.md))
-4. **Fase 5** — lembretes de acompanhamento e consolidação (fatias 1 e 2 concluídas: lembretes + painel de pendências e exportação CSV/JSON)
+4. **Fase 5** — lembretes de acompanhamento e consolidação (fatias 1 a 3 concluídas: lembretes + painel de pendências, exportação CSV/JSON e notificação desktop opcional)
 
 Regras permanentes: tentativa ≠ enviada; o JobPilot **nunca** envia candidatura sozinho nos portais-alvo; nada é declarado "suportado" sem verificação real.

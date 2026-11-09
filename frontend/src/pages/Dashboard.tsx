@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
+import { useEffect } from "react";
 import { useFetch } from "../lib/useFetch";
+import { notifyOverdueReminders } from "../lib/notifications";
 import type { Dashboard, Job, Paged } from "../api/types";
 import {
   APPLICATION_STATUS_LABELS,
@@ -13,6 +15,13 @@ import {
 export default function Dashboard() {
   const { data, error, loading } = useFetch<Dashboard>("/dashboard");
   const { data: topJobs } = useFetch<Paged<Job>>("/jobs?sort=priority&pageSize=5");
+
+  useEffect(() => {
+    if (!data) return;
+    // Canal de notificação (Fase 5.2): apenas lembretes vencidos, uma vez por
+    // dia. Falhas são logadas dentro do módulo e não interrompem o dashboard.
+    notifyOverdueReminders(data.reminders.items.filter((reminder) => reminder.overdue));
+  }, [data]);
 
   if (loading) return <p className="muted">Carregando…</p>;
   if (error) return <div className="alert alert-error">{error.message}</div>;
