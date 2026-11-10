@@ -1,8 +1,8 @@
 # JobPilot — Especificação Técnica v1.1
 
-**Status:** Fases 1–5 implementadas (atualizado em 2026-11-08). O envio automatizado nos portais permanece **fora de escopo** por decisão registrada em `docs/PORTAIS.md`.
+**Status:** Fases 1–5 implementadas e Fase 6 iniciada com a Nube (atualizado em 2026-11-10). O envio automatizado nos portais permanece **fora de escopo** por decisão registrada em `docs/PORTAIS.md`.
 **Relação com o escopo:** detalha tecnicamente o `docs/ESCOPO.md` v1.1. Não substitui o escopo; quando divergirem, o escopo prevalece em requisitos funcionais.
-**Marco atual:** Fase 5 concluída — lembretes, painel de pendências, exportação CSV/JSON, notificação desktop opcional, revisão de segurança e documentação. As fases 1–4 (fundação, coleta, IA e candidatura assistida) também estão implementadas e cobertas por testes.
+**Marco atual:** Fase 6.1 concluída — conector Nube para estágios em Curitiba/Grande Curitiba e home office, com paginação, detalhe via JSON-LD e cache. As fases 1–5 (fundação, coleta, IA, candidatura assistida, lembretes e consolidação) também estão implementadas e cobertas por testes. RapidAPI, Adzuna e Jooble seguem **preparadas, não implementadas**.
 
 ## 1. Princípios e decisões estruturais
 
@@ -623,6 +623,10 @@ export interface SourceConnector {
   readonly key: string; // 'remotive'
   readonly name: string;
   readonly kind: "api" | "html" | "browser";
+  /** Estado declarado após verificação documentada em docs/FONTES.md. */
+  readonly supportState: "unverified" | "verified" | "broken" | "blocked";
+  /** Timeout específico da fonte; ausente = timeout padrão da coleta (30 s). */
+  readonly timeoutMs?: number;
   /** Deve verificar e declarar suporte; lança SourceError('unsupported') se não viável */
   verify(): Promise<{ ok: boolean; reason?: string }>;
   fetch(ctx: ConnectorContext): AsyncIterable<RawJob>;
@@ -663,11 +667,13 @@ Priorizar **APIs públicas e estáveis** antes de scraping. Verificar cada uma e
 | --------------------------------------------------- | ------------ | ---------------------- | ---------------------------------------------------------------- |
 | Remotive API                                        | API          | alta                   | JSON público, sem auth; boa para remoto                          |
 | RemoteOK API                                        | API          | alta                   | JSON público; respeitar rate limit                               |
+| Nube                                                | API          | alta (Brasil)          | JSON público sem chave; estágios em Curitiba/remoto; empresa oculta |
 | Arbeitnow API                                       | API          | média-alta             | JSON público                                                     |
-| GitHub Jobs / Jobs API                              | API          | média                  | verificar estado atual da API                                    |
+| GitHub Issues (frontendbr/backend-br)               | API          | baixa                  | 0 estágio aberto em 2026-11-10; markdown livre                    |
 | Hacker News (Who is hiring / Algolia HN API)        | API          | média                  | textinho; exige parse; bom para júnior                           |
 | Careerjet / Adzuna / USAJobs                        | API          | média                  | exigem chave de API (custo/limite)                               |
 | LinkedIn / Indeed / Glassdoor                       | HTML/Browser | **baixa / arriscada**  | ToS restritivos, CAPTCHA frequente; **não prometer suporte**     |
+| RapidAPI (JSearch / LinkedIn)                       | API de terceiro | baixa/média         | raspagem de terceiros; exigem chave, cota e validação de ToS      |
 | Portais de ATS (Greenhouse, Lever, Ashby, Workable) | API/HTML     | média-alta             | têm endpoints públicos de vagas por empresa; bons para automação |
 
 **Regra:** um conector só recebe `support_state='verified'` após (a) `verify()` ok, (b) uma execução real bem-sucedida, (c) registro em `docs/FONTES.md`. Portais de ATS entram na Fase 4 como alvo de automação, não de coleta em massa.
@@ -676,7 +682,7 @@ Priorizar **APIs públicas e estáveis** antes de scraping. Verificar cada uma e
 
 - `User-Agent` identificável + identificação no README; `robots.txt` respeitado quando aplicável.
 - Rate limit por fonte (mínimo 1 req/s, backoff exponencial em 429).
-- Timeout por fonte (default 30 s); falha em uma fonte **não** aborta as demais → `search_runs.status='partial'`.
+- Timeout por fonte (default 30 s; a fonte pode declarar `timeoutMs` próprio — a Nube usa 120 s por causa da paginação); falha em uma fonte **não** aborta as demais → `search_runs.status='partial'`.
 - Cache de página/JSON por 15 min para evitar rebuscas repetidas.
 - Nenhuma fonte pode gerar mais de `MAX_JOBS_PER_RUN` (default 200) vagas por execução.
 
@@ -1050,6 +1056,19 @@ Regras (válidas desde o Marco 1):
 | 5.4 ✅ | Revisão de segurança e regressão                | checklist completo; sem segredos; restore testado  |
 | 5.5 ✅ | Documentação (instalação, uso, backup, portais) | usuário novo instala seguindo só o README          |
 
+### Fase 6 — Fontes brasileiras e cobertura local
+
+> Objetivo: fazer o JobPilot **procurar vagas sozinho**, de graça, cobrindo estágios em Curitiba
+> (presencial/híbrido) e remotos. Nenhuma fonte desta fase faz login, resolve CAPTCHA ou envia
+> candidatura; o link abre a página original para o envio humano.
+
+| #      | Tarefa                                      | CA                                                                                                 |
+| ------ | ------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 6.1 ✅ | Conector Nube                               | `verify()`/`fetch()` reais; 39 vagas no recorte em 2026-11-10; 16 testes offline; `docs/FONTES.md` |
+| 6.2    | RapidAPI (JSearch ou LinkedIn)              | só depois de escolher o endpoint, criar a chave e validar **uma** consulta real; `supportState` fica `unverified` até lá |
+| 6.3    | Adzuna / Jooble                             | chaves gratuitas criadas pelo usuário; cobertura BR/Curitiba medida e registrada antes do código   |
+| 6.4    | GitHub Issues                               | verificado em 2026-11-10: 0 estágio aberto; não implementar enquanto o volume for irrelevante      |
+
 ## 13. Ordem de implementação recomendada e primeiro marco
 
 ### Ordem
@@ -1120,7 +1139,7 @@ Dentro de cada fase, ordem: **dados → domínio → API → UI → testes → d
 
 | #       | Decisão                                  | Opções                                                                                                                                          | Recomendação                                                                                                                                                                                                                                                             |
 | ------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **D1**  | **Fontes iniciais de vagas** (Fase 2)    | (a) só APIs públicas (Remotive, RemoteOK, Arbeitnow); (b) APIs + HN Algolia; (c) incluir ATS de empresa; (d) tentar LinkedIn/Indeed (arriscado) | **(a) + (b)**; LinkedIn/Indeed fora do escopo inicial                                                                                                                                                                                                                    |
+| **D1**  | **Fontes iniciais de vagas** (Fase 2/6)  | (a) só APIs públicas (Remotive, RemoteOK, Arbeitnow); (b) APIs + HN Algolia; (c) incluir ATS de empresa; (d) tentar LinkedIn/Indeed (arriscado) | **(a) + (b) + Nube** (2026-11-10); RapidAPI só com chave e validação explícita; LinkedIn/Indeed fora do escopo inicial                                                                                                                                                  |
 | **D2**  | **Provedor de IA e orçamento** (Fase 3)  | OpenAI / Anthropic / Google / modelo local (Ollama) / outro                                                                                     | escolha + **teto mensal em USD** + se aceita envio do CV para terceiros                                                                                                                                                                                                  |
 | **D3**  | **Canal de lembretes** (Fase 5)          | só no dashboard / e-mail local (SMTP) / desktop notification / Telegram bot                                                                     | **dashboard + notificação desktop**; e-mail depois                                                                                                                                                                                                                       |
 | **D4**  | **Tratamento do arquivo do CV** (Fase 3) | (a) só texto extraído, arquivo apagado; (b) retido em `data/uploads/`; (c) retenção por N dias                                                  | **(b)** com backup incluído; confirmar aceitação                                                                                                                                                                                                                         |

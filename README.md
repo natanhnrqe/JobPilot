@@ -28,7 +28,8 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 
 **Fase 2 — coleta de vagas**
 
-- ✅ **Conectores Remotive e Remote OK** verificados na prática (APIs públicas) e registrados em [`docs/FONTES.md`](docs/FONTES.md)
+- ✅ **Conectores Remotive, Remote OK e Nube** verificados na prática (APIs públicas) e registrados em [`docs/FONTES.md`](docs/FONTES.md)
+- ✅ **Nube** (2026-11-10): estágios em Curitiba/Grande Curitiba e home office; a empresa contratante geralmente só aparece no site da vaga
 - ✅ **CLI de coleta** (`npm run collect`): busca as fontes, grava pelo mesmo caminho do cadastro manual, deduplica e registra a execução em `search_runs` + `execution_logs`
 - ✅ **Lock de execução** (`data/.lock`): duas execuções simultâneas → a segunda fica `skipped`, sem corromper dados
 - ✅ Falha de uma fonte **não derruba as demais** (`status='partial'`) e o resumo fica em `data/last-run.json`
@@ -52,7 +53,7 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 - ✅ **Edição manual** de dados pessoais, experiências, formação, habilidades, idiomas, projetos, preferências profissionais e respostas padrão para formulários
 - ✅ Rotas `GET/PUT /api/v1/profile`, `POST /api/v1/profile/cv` (prévia, não persiste) e `POST /api/v1/profile/cv/confirm`
 
-✅ **287 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, análise de compatibilidade, orçamento diário de IA, candidatura assistida, rascunho de candidatura com IA, lembretes de acompanhamento, exportação CSV/JSON, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, perfil, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
+✅ **303 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, análise de compatibilidade, orçamento diário de IA, candidatura assistida, rascunho de candidatura com IA, lembretes de acompanhamento, exportação CSV/JSON, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, perfil, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
 
 **Não implementado** (por design, por enquanto): envio automatizado nos portais (os alvos vedam bots — ver [`docs/PORTAIS.md`](docs/PORTAIS.md)), análise em lote e Playwright.
 
@@ -109,7 +110,7 @@ npm run db:migrate
 
 ## Coleta de vagas (CLI)
 
-Busca as fontes verificadas (Remotive e Remote OK) e grava as vagas novas:
+Busca as fontes verificadas (Remotive, Remote OK e Nube) e grava as vagas novas:
 
 ```powershell
 npm run collect
@@ -119,6 +120,7 @@ npm run collect
 - Cada execução é registrada em `search_runs` e `execution_logs`; o resumo também fica em `data/last-run.json`.
 - Duas execuções simultâneas não se atropelam: a segunda é registrada como `skipped` (lock em `data/.lock`).
 - Código de saída: `0` para sucesso/parcial, `1` para falha total.
+- A **Nube** não tem filtro por cidade na API: o conector baixa a listagem (13 páginas, ~54 s), filtra **Curitiba/Grande Curitiba e home office** e busca o detalhe só dessas vagas. A empresa contratante geralmente só aparece no site da vaga.
 - O agendamento automático (Windows, 18:00) usa `scripts/install-task.ps1`; veja a seção seguinte.
 
 Fontes, campos, limites e condições de uso: [`docs/FONTES.md`](docs/FONTES.md).
@@ -196,14 +198,14 @@ As rotas são `GET /api/v1/profile`, `PUT /api/v1/profile`, `POST /api/v1/profil
 - ✅ **Canal de notificação**: painel de pendências + **notificação desktop opcional** (ativação em Configurações); no máximo uma vez por lembrete por dia
 - ✅ Falha de permissão ou de exibição da notificação fica **apenas no console** — o dashboard e o restante do app continuam funcionando
 - ✅ **Backup semanal automático** opcional no Windows (`scripts/install-backup-task.ps1`), mantendo a retenção de 14 backups
-- ✅ **Revisão de segurança e regressão** em [`docs/SEGURANCA.md`](docs/SEGURANCA.md): sem segredos versionados, restore testado, 287 testes verdes
+- ✅ **Revisão de segurança e regressão** em [`docs/SEGURANCA.md`](docs/SEGURANCA.md): sem segredos versionados, restore testado, 303 testes verdes
 
 ## Página de Execuções
 
 Com o servidor rodando, abra **<http://localhost:5173/execucoes>** em desenvolvimento (`npm run dev`) ou **<http://127.0.0.1:3000/execucoes>** com a interface compilada (`npm start`), ou clique em **Execuções** no menu. A página mostra:
 
 - **Resumo da última coleta** gravado em `data/last-run.json`;
-- **Fontes registradas** (Remotive, Remote OK) com estado de verificação e se estão habilitadas;
+- **Fontes registradas** (Remotive, Remote OK e Nube) com estado de verificação e se estão habilitadas;
 - **Histórico** das execuções com origem (manual/agendada), status, duração, contagens e resumo;
 - **Logs** de cada execução (passo, nível, mensagem e detalhes) ao clicar em _Ver logs_.
 

@@ -97,7 +97,7 @@ As migrações são arquivos SQL versionados em `backend/migrations/` e são **i
 ## 8. Testes e build
 
 ```powershell
-npm test        # 287 testes (backend); 100% offline, banco temporário por arquivo de teste
+npm test        # 303 testes (backend); 100% offline, banco temporário por arquivo de teste
 npm run build   # compila backend (tsc → backend/dist) e frontend (vite → frontend/dist)
 ```
 
@@ -109,7 +109,7 @@ Com o app fechado ou aberto, a coleta pode rodar direto no banco:
 npm run collect
 ```
 
-- Usa as fontes verificadas em [`FONTES.md`](FONTES.md) (hoje: Remotive e Remote OK) e grava as vagas novas pelo mesmo caminho do cadastro manual.
+- Usa as fontes verificadas em [`FONTES.md`](FONTES.md) (hoje: Remotive, Remote OK e Nube) e grava as vagas novas pelo mesmo caminho do cadastro manual.
 - Registra a execução em `search_runs` + `execution_logs` e grava o resumo em `data/last-run.json`.
 - Duas execuções simultâneas: a segunda é marcada como `skipped` (lock em `data/.lock`).
 - Saída: `0` = sucesso/parcial; `1` = falha total.

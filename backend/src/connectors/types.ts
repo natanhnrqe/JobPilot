@@ -52,6 +52,11 @@ export interface SourceConnector {
   readonly kind: "api" | "html" | "browser";
   /** Estado declarado após verificação documentada em `docs/FONTES.md`. */
   readonly supportState: SupportState;
+  /**
+   * Timeout específico da fonte (ms). Quando ausente, vale o timeout padrão da
+   * coleta (30 s). A Nube precisa de mais tempo por causa da paginação.
+   */
+  readonly timeoutMs?: number;
   /** Declara viabilidade; lança `SourceError("unsupported")` quando não viável. */
   verify(): Promise<{ ok: boolean; reason?: string }>;
   fetch(ctx: ConnectorContext): AsyncIterable<RawJob>;

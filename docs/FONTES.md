@@ -5,16 +5,20 @@
 >
 > **Metodologia:** requisição real à API com `User-Agent` identificável, conferência do corpo da
 > resposta, dos campos efetivamente presentes e das condições de uso publicadas. Datas de verificação:
-> Remotive em **2026-11-03**; Remote OK em **2026-11-04** (com reconferência de parâmetros e tags).
+> Remotive em **2026-11-03**; Remote OK em **2026-11-04** (com reconferência de parâmetros e tags);
+> Nube e GitHub Issues em **2026-11-10**.
 
 ## Resumo
 
-| Fonte                 | Status no código    | Acesso            | Verificada em |
-| --------------------- | ------------------- | ----------------- | ------------- |
-| Remotive              | ✅ implementada     | API pública (GET) | 2026-11-03    |
-| Remote OK             | ✅ implementada     | API pública (GET) | 2026-11-04    |
-| Arbeitnow             | ❌ não implementada | API pública (GET) | 2026-11-03    |
-| Hacker News (Algolia) | ❌ não implementada | API pública (GET) | 2026-11-03    |
+| Fonte                          | Status no código    | Acesso                     | Verificada em |
+| ------------------------------ | ------------------- | -------------------------- | ------------- |
+| Remotive                       | ✅ implementada     | API pública (GET)          | 2026-11-03    |
+| Remote OK                      | ✅ implementada     | API pública (GET)          | 2026-11-04    |
+| Nube                           | ✅ implementada     | API pública (GET)          | 2026-11-10    |
+| GitHub Issues                  | ❌ não implementada | API pública (GET)          | 2026-11-10    |
+| RapidAPI (JSearch/LinkedIn)    | ❌ não implementada | API de terceiro (chave)    | 2026-11-10    |
+| Arbeitnow                      | ❌ não implementada | API pública (GET)          | 2026-11-03    |
+| Hacker News (Algolia)          | ❌ não implementada | API pública (GET)          | 2026-11-03    |
 
 ---
 
@@ -117,6 +121,103 @@
 
 ---
 
+## Nube — implementada (`backend/src/connectors/nube.ts`)
+
+- **Acesso:** API pública do próprio portal, sem chave e sem login.
+  - Listagem: `GET https://www.nube.com.br/api/portal/buscar_filtro_vagas?id_tipo_vaga=1&page_size=500&offset=N`
+  - Detalhe: `GET https://www.nube.com.br/api/portal/buscar-detalhes-vaga/json?id_vaga=...&titulo=...`
+- **Formato da listagem:** `{ param: { lista_ids_vaga, offset: { total, mostra_btn_mais }, dict_por_id_vaga } }`.
+  Cada `dict_por_id_vaga[id].view` traz `id_vaga`, `titulo`, `cidade`, `uf`, `bolsa_valor`, `selo`
+  (`home_office`, `hibrido`), `url`, `id_modalidade_atuacao`.
+- **Formato do detalhe:** `param._jobposting_sch` com JSON-LD `JobPosting` (título, `datePosted`,
+  `validThrough`, `employmentType`, `jobLocation`, `baseSalary`, `hiringOrganization`, `description`
+  em HTML), além de `vaga_home_office`, `vaga_hibrida`, `texto_tipo_vaga` e `texto_valor_ba`.
+- **Paginação real:** `page_size` funciona (testado com 24, 50, 100, 200 e 500). `limite` é ignorado
+  e devolve ~3,1 MB de uma vez. Com `page_size=500`, a varredura completa custa 13 requisições,
+  ~6,5 MB e ~54 s.
+- **Cobertura real em 2026-11-10:**
+  - a API reportou **6.062** estágios, mas apenas **~3.088 IDs únicos** são acessíveis: depois de
+    ~3.000 a paginação repete vagas (a execução real do conector leu 3.085 e retornou 39 no recorte);
+  - **25 em Curitiba** (23 presenciais + 2 híbridas), **28 na Grande Curitiba** e **11 home office**;
+  - a execução real do conector no mesmo dia retornou **39 vagas** (26 presenciais, 2 híbridas e 11
+    remotas), porque a listagem já havia mudado;
+  - salários entre **R$ 900 e R$ 2.100**; todas as 36 vagas conferidas tinham `datePosted`,
+    `validThrough`, salário e `employmentType: INTERN`.
+- **Detalhe:** 15–22 KB por vaga, mediana de **100 ms** (mín. 19 ms, máx. 507 ms), descrição de
+  ~976–1.858 caracteres antes da conversão para texto.
+- **Campos usados pelo conector:** `id_vaga` (→ `external_id`), `url` (→ `source_url` absoluta),
+  `titulo`/`title` (→ título, sem o sufixo ` - <id>`), `cidade`/`uf` (→ localização), `selo` e
+  `vaga_home_office`/`vaga_hibrida` (→ modalidade), `bolsa_valor`/`texto_valor_ba` (→ salário),
+  `description` (→ texto puro), `datePosted` (→ `posted_at`), `validThrough` (→ descarte de vencidas).
+- **Limitações conhecidas:**
+  - **não há filtro por cidade/estado** na API: o recorte Curitiba/Grande Curitiba é feito no cliente;
+  - a paginação além de ~3.000 repete vagas; o conector deduplica por ID e limita a 20 páginas;
+  - a empresa contratante quase nunca é revelada: em **35 de 36** vagas o `hiringOrganization` é a
+    própria Nube (agente). Nesses casos `company` fica **indefinida** — a Nube nunca é gravada como
+    empregadora. Quando o JSON-LD revela a empresa real (ex.: “Saber”), ela é usada;
+  - a listagem não informa descrição; o conector busca o detalhe só das vagas do recorte
+    (36 requisições, ~4 s). Se um detalhe falhar, usa os dados da listagem e uma descrição mínima
+    factual, sem inventar data nem empresa;
+  - vagas com `validThrough` anterior ao dia local são descartadas;
+  - a varredura completa leva ~54 s, acima do timeout padrão de 30 s. O conector declara
+    `timeoutMs = 120_000`; as demais fontes continuam com 30 s.
+- **Condições de uso:** `robots.txt` permite `/api` (bloqueia apenas `/estudantes/gestor/`,
+  `/empresas/gestor/` e `/escolas/gestor/`). A política de uso/privacidade não tem cláusula
+  explícita contra ler vagas públicas, mas os itens 31–33 tratam de abuso e de “acesso a dados não
+  autorizados”. Mitigações adotadas: **cache de 15 min**, User-Agent identificável, uma execução por
+  vez, nenhum login, nenhuma candidatura automática e link de volta para a página da vaga.
+- **Verificação:** `verify()` e `fetch()` reais contra a Nube em 2026-11-10; 3.085 IDs lidos, 39
+  vagas aceitas, 26 presenciais / 2 híbridas / 11 remotas, 53,9 s; detalhes com JSON-LD válido e
+  descrição em texto puro. Nenhuma vaga foi gravada no banco durante a verificação.
+- **Cobertura de testes:** `backend/tests/unit/nube.test.ts` — **16 testes offline** com servidor
+  local e payload fixo, cobrindo verificação, cache da primeira página, paginação e deduplicação,
+  mapeamento de campos, empresa real vs. agente, modalidade, filtro Curitiba/remoto, descarte de
+  vencidas, `maxJobs`, aborto, falha de detalhe (fallback) e falha de página posterior.
+
+## GitHub Issues — verificada, não implementada
+
+- **Acesso:** API pública de busca do GitHub (`/search/issues`), sem chave para leitura.
+- **Repositórios conferidos em 2026-11-10:** `frontendbr/vagas`, `backend-br/vagas` e
+  `react-brasil/vagas`.
+- **Resultado:** 55 issues abertas no total (54 de vagas + 1 aviso fixo), **nenhuma** com
+  “estágio/estagiário/intern/trainee” no título. Apenas **2** mencionavam Curitiba, ambas de nível
+  sênior/tech lead; 23 eram remotas, majoritariamente pleno/sênior.
+- **Limitações:** volume baixo para estágio, texto em Markdown livre (exigiria parsing e
+  classificação), issues antigas/stale e rate limit de 10 buscas/min sem token (30/min com token).
+- **Status:** não implementada. O custo de parsing não se justifica enquanto o volume de estágio for
+  zero; pode ser reconsiderada como fonte complementar de “comunidade”.
+
+## RapidAPI (JSearch / LinkedIn) — preparada, não implementada
+
+- **Plano detalhado:** [`docs/RAPIDAPI.md`](RAPIDAPI.md).
+- **Status:** nenhum código e nenhuma chave no repositório. A decisão de usar depende de você
+  escolher o endpoint e criar a conta gratuita.
+- **Candidatos:**
+  - **JSearch** — agrega Google Jobs, LinkedIn, Indeed e Glassdoor; resposta relativamente estável
+    (`data[]` com `job_title`, `employer_name`, `job_city`, `job_country`, `job_employment_type`,
+    `job_description`, `job_posted_at_datetime_utc`, `job_apply_link`);
+  - **scrapers de LinkedIn** — dezenas de APIs de terceiros, cada uma com formato próprio; maior
+    risco de quebra e de bloqueio.
+- **Riscos:** não são APIs oficiais; são raspagem de terceiros. Podem violar os termos do LinkedIn,
+  do Indeed e do Glassdoor, mudar de formato sem aviso e passar a cobrar depois da cota gratuita.
+  O JobPilot não contorna login, CAPTCHA ou bloqueio; se a API responder 401/403/429, a fonte falha
+  e as demais continuam.
+- **Preparação para a implementação:**
+  - variáveis previstas: `RAPIDAPI_KEY` (obrigatória, só no `.env` gitignored) e `RAPIDAPI_HOST`
+    (ex.: `jsearch.p.rapidapi.com`);
+  - o futuro conector implementará `SourceConnector` com `supportState: "unverified"` até a
+    verificação real; só então passará a `"verified"` e será registrado nesta página;
+  - consulta inicial de validação: “estágio” em Curitiba/PR e remoto, com uma página de resultados;
+  - mapeamento previsto: `job_id` → `external_id`, `job_apply_link` → `source_url`,
+    `job_title`, `employer_name`, `job_city`/`job_country`, `job_employment_type`,
+    `job_description`, `job_posted_at_datetime_utc`;
+  - cache de 15 min, timeout próprio, nenhuma candidatura automática e nenhum envio de currículo.
+- **Checklist antes de codar:** criar a conta, assinar o endpoint, rodar **uma** consulta real,
+  registrar status HTTP, campos, cota e termos em `docs/FONTES.md`; comparar com a Nube; só então
+  implementar e testar offline com fixture.
+- **Custo:** a cota gratuita varia por provedor e por endpoint; não há orçamento aprovado para
+  ultrapassá-la. Se a cota acabar, a fonte deve falhar de forma isolada, sem quebrar a coleta.
+
 ## Regras que valem para qualquer fonte
 
 1. **Verificar antes de implementar:** documentação oficial, disponibilidade real, campos
@@ -127,5 +228,6 @@
    deduplicação → gravação pelos mesmos serviços do cadastro manual.
 4. **User-Agent identificável:** `JobPilot/0.1 (local; contato: usuario-local)` — trocar o contato
    pelo seu e-mail antes de uso em volume.
-5. **Respeitar limites:** 1 requisição por fonte por execução (cache), timeout de 30 s por fonte e
-   falha de uma fonte **nunca** aborta as demais.
+5. **Respeitar limites:** cache de 15 min, timeout padrão de 30 s por fonte (fontes com paginação
+   pesada podem declarar `timeoutMs` próprio, como a Nube com 120 s) e falha de uma fonte **nunca**
+   aborta as demais.

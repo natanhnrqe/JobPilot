@@ -60,9 +60,11 @@ O kit é somente leitura e **não consome IA** (não gasta orçamento).
 
 ## Coleta continua separada
 
-A coleta diária das 18:00 segue com as fontes verificadas **Remotive** e
-**Remote OK** (`docs/FONTES.md`). Incluir um novo portal de coleta exige
-verificar termos, robots/limites e registrar a evidência antes de habilitar.
+A coleta diária das 18:00 segue com as fontes verificadas **Remotive**,
+**Remote OK** e **Nube** (`docs/FONTES.md`). A Nube é usada apenas para ler
+vagas públicas de estágio; não há login, candidatura ou scraping das áreas de
+gestor. Incluir um novo portal de coleta exige verificar termos,
+robots/limites e registrar a evidência antes de habilitar.
 
 ## Próximos passos da Fase 4
 

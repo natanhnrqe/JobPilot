@@ -63,6 +63,7 @@ export interface CollectOptions {
   connectors: SourceConnector[];
   trigger: CollectTrigger;
   maxJobsPerRun?: number;
+  /** Timeout padrão por fonte; `SourceConnector.timeoutMs` tem precedência. */
   sourceTimeoutMs?: number;
   parallelism?: number;
   /** Caminho do lock; padrão `data/.lock`. */
@@ -149,6 +150,8 @@ async function executeCollect(
   const maxJobs = opts.maxJobsPerRun ?? DEFAULT_MAX_JOBS_PER_RUN;
   const timeoutMs = opts.sourceTimeoutMs ?? DEFAULT_SOURCE_TIMEOUT_MS;
   const parallelism = Math.max(1, opts.parallelism ?? DEFAULT_PARALLELISM);
+  // Fontes com paginação pesada (ex.: Nube) declaram seu próprio timeout; as
+  // demais continuam com o padrão de 30 s.
 
   // Fontes registradas/atualizadas antes de qualquer busca (o mesmo upsert da
   // migração 003). `enabled` é preservado — o usuário pode desabilitar uma fonte.
@@ -325,8 +328,9 @@ async function fetchSource(
     return { connector, sourceId, status: "skipped", jobs, error: null };
   }
 
+  const effectiveTimeoutMs = connector.timeoutMs ?? timeoutMs;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimeout(() => controller.abort(), effectiveTimeoutMs);
 
   const logger: ConnectorLogger = {
     log(level, step, message, meta) {
@@ -372,7 +376,7 @@ async function fetchSource(
     }
 
     if (controller.signal.aborted) {
-      throw new SourceError("network", `Tempo limite de ${timeoutMs} ms excedido.`);
+      throw new SourceError("network", `Tempo limite de ${effectiveTimeoutMs} ms excedido.`);
     }
 
     insertExecutionLog(db, {
