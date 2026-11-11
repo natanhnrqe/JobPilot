@@ -2,7 +2,7 @@
 
 **Status:** Fases 1–5 implementadas e Fase 6 iniciada com a Nube (atualizado em 2026-11-10). O envio automatizado nos portais permanece **fora de escopo** por decisão registrada em `docs/PORTAIS.md`.
 **Relação com o escopo:** detalha tecnicamente o `docs/ESCOPO.md` v1.1. Não substitui o escopo; quando divergirem, o escopo prevalece em requisitos funcionais.
-**Marco atual:** Fase 6.1 concluída — conector Nube para estágios em Curitiba/Grande Curitiba e home office, com paginação, detalhe via JSON-LD e cache. As fases 1–5 (fundação, coleta, IA, candidatura assistida, lembretes e consolidação) também estão implementadas e cobertas por testes. RapidAPI, Adzuna e Jooble seguem **preparadas, não implementadas**.
+**Marco atual:** Fase 6.1 concluída — conector Nube para estágios em Curitiba/Grande Curitiba e home office, com paginação, detalhe via JSON-LD e cache. As fases 1–5 (fundação, coleta, IA, candidatura assistida, lembretes e consolidação) também estão implementadas e cobertas por testes. O JSearch (RapidAPI) foi **validado em 2026-11-10** com uma consulta real (10 vagas, 9 estágios em Curitiba; cota de 200/mês), mas o conector segue **não implementado**; Adzuna e Jooble continuam pendentes de chave.
 
 ## 1. Princípios e decisões estruturais
 
@@ -1065,7 +1065,7 @@ Regras (válidas desde o Marco 1):
 | #      | Tarefa                                      | CA                                                                                                 |
 | ------ | ------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | 6.1 ✅ | Conector Nube                               | `verify()`/`fetch()` reais; 39 vagas no recorte em 2026-11-10; 16 testes offline; `docs/FONTES.md` |
-| 6.2    | RapidAPI (JSearch ou LinkedIn)              | só depois de escolher o endpoint, criar a chave e validar **uma** consulta real; `supportState` fica `unverified` até lá |
+| 6.2    | RapidAPI (JSearch ou LinkedIn)              | JSearch validado em 2026-11-10 (`/search-v2`, 10 vagas, 9 estágios em Curitiba, cota 200/mês); falta confirmar termos e comparar com a Nube antes de implementar; `supportState` fica `unverified` até a execução real |
 | 6.3    | Adzuna / Jooble                             | chaves gratuitas criadas pelo usuário; cobertura BR/Curitiba medida e registrada antes do código   |
 | 6.4    | GitHub Issues                               | verificado em 2026-11-10: 0 estágio aberto; não implementar enquanto o volume for irrelevante      |
 

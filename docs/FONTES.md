@@ -16,7 +16,7 @@
 | Remote OK                      | ✅ implementada     | API pública (GET)          | 2026-11-04    |
 | Nube                           | ✅ implementada     | API pública (GET)          | 2026-11-10    |
 | GitHub Issues                  | ❌ não implementada | API pública (GET)          | 2026-11-10    |
-| RapidAPI (JSearch/LinkedIn)    | ❌ não implementada | API de terceiro (chave)    | 2026-11-10    |
+| RapidAPI (JSearch/LinkedIn)    | ⚠️ validada, não impl. | API de terceiro (chave)    | 2026-11-10    |
 | Arbeitnow                      | ❌ não implementada | API pública (GET)          | 2026-11-03    |
 | Hacker News (Algolia)          | ❌ não implementada | API pública (GET)          | 2026-11-03    |
 
@@ -187,35 +187,51 @@
 - **Status:** não implementada. O custo de parsing não se justifica enquanto o volume de estágio for
   zero; pode ser reconsiderada como fonte complementar de “comunidade”.
 
-## RapidAPI (JSearch / LinkedIn) — preparada, não implementada
+## RapidAPI (JSearch / LinkedIn) — validada, não implementada
 
 - **Plano detalhado:** [`docs/RAPIDAPI.md`](RAPIDAPI.md).
-- **Status:** nenhum código e nenhuma chave no repositório. A decisão de usar depende de você
-  escolher o endpoint e criar a conta gratuita.
+- **Status:** nenhum código no repositório. A chave existe apenas no `.env` local (gitignored). Uma
+  consulta real ao **JSearch** foi feita em **2026-11-10**; o conector ainda **não** foi implementado.
 - **Candidatos:**
-  - **JSearch** — agrega Google Jobs, LinkedIn, Indeed e Glassdoor; resposta relativamente estável
-    (`data[]` com `job_title`, `employer_name`, `job_city`, `job_country`, `job_employment_type`,
-    `job_description`, `job_posted_at_datetime_utc`, `job_apply_link`);
+  - **JSearch** — agrega Google Jobs, LinkedIn, Indeed e Glassdoor; endpoint atual **`/search-v2`**
+    (o antigo `/search` responde `404 Endpoint '/search' does not exist`);
   - **scrapers de LinkedIn** — dezenas de APIs de terceiros, cada uma com formato próprio; maior
     risco de quebra e de bloqueio.
+- **Verificação real do JSearch em 2026-11-10:**
+  - requisição: `GET https://jsearch.p.rapidapi.com/search-v2?query=est%C3%A1gio%20Curitiba&page=1&num_pages=1&country=br&date_posted=month`;
+  - resposta: **HTTP 200**, **4,6 s**, **31.080 bytes**, `status: "OK"`, **10 vagas**;
+  - **9 de 10** eram estágio e **10 de 10** em Curitiba; **0 remotas** (a consulta foi presencial);
+  - formato: `{ status, request_id, parameters, data: { jobs: [...] } }` — **não** é `data[]`;
+  - campos presentes (39): `job_id`, `job_title`, `employer_name`, `job_city`, `job_country`,
+    `job_employment_type`, `job_is_remote`, `job_description`, `job_apply_link`, `job_google_link`,
+    `job_publisher`, `job_posted_at_datetime_utc`, `job_min_salary`/`job_max_salary`,
+    `job_salary_string`, `job_benefits`, `job_highlights`, `apply_options`, entre outros;
+  - `job_employment_type` vem **localizado em português** (“Estágio”, “Prestador de serviços”,
+    “Meio período”, “Tempo integral”), não como `INTERN`; o conector precisará normalizar o texto;
+  - `job_posted_at_datetime_utc` veio **nulo nas 10 vagas** — a data não pode ser inventada;
+  - os links de candidatura apontam para os portais de origem (Catho, Indeed, TOTVS, TalentBrand,
+    trabajo.org), não para o RapidAPI;
+  - cota gratuita observada: **200 requisições/mês** (`x-ratelimit-requests-limit: 200`), com
+    **195 restantes** após as sondagens. A cota é pequena: o conector deve usar cache e no máximo
+    uma página por execução.
 - **Riscos:** não são APIs oficiais; são raspagem de terceiros. Podem violar os termos do LinkedIn,
   do Indeed e do Glassdoor, mudar de formato sem aviso e passar a cobrar depois da cota gratuita.
   O JobPilot não contorna login, CAPTCHA ou bloqueio; se a API responder 401/403/429, a fonte falha
   e as demais continuam.
 - **Preparação para a implementação:**
-  - variáveis previstas: `RAPIDAPI_KEY` (obrigatória, só no `.env` gitignored) e `RAPIDAPI_HOST`
-    (ex.: `jsearch.p.rapidapi.com`);
-  - o futuro conector implementará `SourceConnector` com `supportState: "unverified"` até a
-    verificação real; só então passará a `"verified"` e será registrado nesta página;
-  - consulta inicial de validação: “estágio” em Curitiba/PR e remoto, com uma página de resultados;
-  - mapeamento previsto: `job_id` → `external_id`, `job_apply_link` → `source_url`,
-    `job_title`, `employer_name`, `job_city`/`job_country`, `job_employment_type`,
-    `job_description`, `job_posted_at_datetime_utc`;
+  - variáveis: `RAPIDAPI_KEY` (obrigatória, só no `.env` gitignored) e `RAPIDAPI_HOST`
+    (`jsearch.p.rapidapi.com`);
+  - o conector implementará `SourceConnector` com `supportState: "unverified"` até a primeira
+    execução real pelo pipeline; só então passará a `"verified"` e será registrado nesta página;
+  - mapeamento previsto: `job_id` → `external_id`, `job_apply_link` (fallback `job_google_link`) →
+    `source_url`, `job_title`, `employer_name`, `job_city`/`job_country`, `job_is_remote` →
+    `workMode`, `job_employment_type` normalizado → `contractType`, `job_description` → texto puro,
+    `job_posted_at_datetime_utc` → `postedAt` (quando não nulo);
   - cache de 15 min, timeout próprio, nenhuma candidatura automática e nenhum envio de currículo.
-- **Checklist antes de codar:** criar a conta, assinar o endpoint, rodar **uma** consulta real,
-  registrar status HTTP, campos, cota e termos em `docs/FONTES.md`; comparar com a Nube; só então
-  implementar e testar offline com fixture.
-- **Custo:** a cota gratuita varia por provedor e por endpoint; não há orçamento aprovado para
+- **Checklist antes de codar:** ~~criar a conta~~, ~~assinar o endpoint~~, ~~rodar uma consulta real~~,
+  ~~registrar status HTTP, campos e cota~~; falta confirmar os termos de uso do provedor e comparar
+  a cobertura com a Nube antes de implementar e testar offline com fixture.
+- **Custo:** a cota gratuita observada é de 200 requisições/mês; não há orçamento aprovado para
   ultrapassá-la. Se a cota acabar, a fonte deve falhar de forma isolada, sem quebrar a coleta.
 
 ## Regras que valem para qualquer fonte

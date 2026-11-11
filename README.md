@@ -57,7 +57,7 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 
 **Não implementado** (por design, por enquanto): envio automatizado nos portais (os alvos vedam bots — ver [`docs/PORTAIS.md`](docs/PORTAIS.md)), análise em lote e Playwright.
 
-**Preparado, não implementado:** RapidAPI (JSearch/LinkedIn), Adzuna e Jooble. As duas últimas exigem chave gratuita criada pelo usuário; a RapidAPI é raspagem de terceiros e só entra depois de escolher o endpoint, validar uma consulta real e registrar as condições em [`docs/FONTES.md`](docs/FONTES.md). O plano está em [`docs/RAPIDAPI.md`](docs/RAPIDAPI.md).
+**Preparado, não implementado:** RapidAPI (JSearch/LinkedIn), Adzuna e Jooble. O **JSearch foi validado em 2026-11-10** com uma consulta real (10 vagas, 9 estágios em Curitiba; cota de 200/mês), mas o conector ainda não foi escrito — veja [`docs/RAPIDAPI.md`](docs/RAPIDAPI.md). Adzuna e Jooble exigem chave gratuita criada pelo usuário.
 
 ## Requisitos
 
