@@ -13,6 +13,8 @@ export interface FetchJsonOptions {
   maxBytes?: number;
   /** Somente testes (servidor local de teste). */
   allowLoopbackForTests?: boolean;
+  /** Cabeçalhos extras (ex.: chave de API). Nunca aparecem em mensagens de erro. */
+  headers?: Record<string, string>;
 }
 
 const DEFAULT_JSON_TIMEOUT_MS = 30000; // Seção 6.4: timeout por fonte
@@ -27,6 +29,7 @@ export async function fetchJson<T>(url: string, options: FetchJsonOptions = {}):
     // Alguns servidores devolvem JSON como text/plain.
     allowedContentTypes: ["application/json", "text/plain"],
     userAgent: "JobPilot/0.1 (local; contato: usuario-local)",
+    headers: options.headers,
   };
 
   let page;

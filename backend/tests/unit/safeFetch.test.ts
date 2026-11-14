@@ -33,6 +33,17 @@ beforeAll(async () => {
       res.end(JSON.stringify({ jobs: [{ id: 1 }] }));
       return;
     }
+    if (url === "/eco") {
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(req.headers));
+      return;
+    }
+    if (url === "/redirect-outro-host") {
+      const address = server.address() as AddressInfo;
+      res.writeHead(302, { Location: `http://localhost:${address.port}/eco` });
+      res.end();
+      return;
+    }
     if (url === "/pdf") {
       res.writeHead(200, { "Content-Type": "application/pdf" });
       res.end("%PDF-1.4");
@@ -224,5 +235,35 @@ describe("fetchPublicResource — conteúdo por tipo (APIs das fontes)", () => {
       415,
       /conteúdo não suportado/i,
     );
+  });
+});
+
+describe("fetchPublicResource — cabeçalhos extras (chaves de API)", () => {
+  const json = { ...loopback, allowedContentTypes: ["application/json"] } as const;
+
+  it("envia os cabeçalhos extras para o destino", async () => {
+    const page = await fetchPublicResource(`${baseUrl}/eco`, {
+      ...json,
+      headers: { "X-Teste": "abc" },
+    });
+    const headers = JSON.parse(page.content) as Record<string, string>;
+    expect(headers["x-teste"]).toBe("abc");
+  });
+
+  it("recusa cabeçalho com CR/LF (injeção)", async () => {
+    await expectAppError(
+      fetchPublicResource(`${baseUrl}/eco`, { ...json, headers: { "X-Bad": "a\r\nb" } }),
+      400,
+      /Cabeçalho inválido/,
+    );
+  });
+
+  it("não reenvia segredo quando o redirecionamento muda de host", async () => {
+    const page = await fetchPublicResource(`${baseUrl}/redirect-outro-host`, {
+      ...json,
+      headers: { "X-Segredo": "s3cr3t" },
+    });
+    const headers = JSON.parse(page.content) as Record<string, string>;
+    expect(headers["x-segredo"]).toBeUndefined();
   });
 });

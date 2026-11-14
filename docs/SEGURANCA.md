@@ -1,6 +1,7 @@
 # Revisão de segurança e regressão — JobPilot (Fase 5.4)
 
-Revisão feita em **2026-11-08**, cobrindo as fases 1–5. O objetivo é confirmar
+Revisão feita em **2026-11-08**, cobrindo as fases 1–5, e atualizada em
+**2026-11-13** com as fontes da Fase 6 (Nube e JSearch). O objetivo é confirmar
 que o JobPilot continua **local, sem segredos versionados, sem automação de
 portais** e que os fluxos críticos têm teste de regressão.
 
@@ -21,7 +22,8 @@ portais** e que os fluxos críticos têm teste de regressão.
 | 11  | Busca por URL protegida contra SSRF       | bloqueio de IPs privados/esquemas, limites de tempo/tamanho; `safeFetch.test.ts`        | ✅     |
 | 12  | Exclusão preserva histórico               | soft delete; exportação inclui `deleted_at`                                             | ✅     |
 | 13  | Lembretes não alteram status sozinhos     | `reminders.api.test.ts`; conclusão é ação do usuário                                    | ✅     |
-| 14  | Regressão completa                        | **303 testes / 34 arquivos**; `lint`, `format:check` e `build` verdes                   | ✅     |
+| 14  | Regressão completa                        | **325 testes / 35 arquivos**; `lint`, `format:check` e `build` verdes                   | ✅     |
+| 15  | Chave do RapidAPI não vaza                | só no `.env`; enviada no header; recusa CR/LF e remove o segredo em redirecionamento    | ✅     |
 
 ## Comandos usados na revisão
 

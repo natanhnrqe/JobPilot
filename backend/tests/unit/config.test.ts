@@ -77,3 +77,33 @@ describe("loadConfig — arquivo .env", () => {
     expect(config.port).not.toBe(9999);
   });
 });
+
+describe("loadConfig — RapidAPI (JSearch)", () => {
+  it("sem RAPIDAPI_KEY, rapidapi é null e o restante continua válido", () => {
+    const config = loadConfig({ DATA_DIR: "ignorado-nos-testes" }, { backendDir: process.cwd() });
+
+    expect(config.rapidapi).toBeNull();
+  });
+
+  it("com RAPIDAPI_KEY, expõe chave e host padrão", () => {
+    const config = loadConfig(
+      { RAPIDAPI_KEY: "chave-de-teste", DATA_DIR: "ignorado-nos-testes" },
+      { backendDir: process.cwd() },
+    );
+
+    expect(config.rapidapi).toEqual({ key: "chave-de-teste", host: "jsearch.p.rapidapi.com" });
+  });
+
+  it("respeita RAPIDAPI_HOST informado", () => {
+    const config = loadConfig(
+      {
+        RAPIDAPI_KEY: "chave-de-teste",
+        RAPIDAPI_HOST: "outro.p.rapidapi.com",
+        DATA_DIR: "ignorado-nos-testes",
+      },
+      { backendDir: process.cwd() },
+    );
+
+    expect(config.rapidapi?.host).toBe("outro.p.rapidapi.com");
+  });
+});

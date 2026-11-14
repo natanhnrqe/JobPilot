@@ -9,13 +9,14 @@
  * O CLI roda sem o servidor da API (acessa o SQLite diretamente).
  */
 
-import { loadConfig } from "../config/index.js";
+import { loadConfig, type AppConfig } from "../config/index.js";
 import { DbHolder } from "../db/holder.js";
 import { createLogger } from "../logging/logger.js";
 import { runCollect, type CollectTrigger } from "../services/collect.js";
 import { RemotiveConnector } from "../connectors/remotive.js";
 import { RemoteOkConnector } from "../connectors/remoteok.js";
 import { NubeConnector } from "../connectors/nube.js";
+import { JSearchConnector } from "../connectors/rapidapiJsearch.js";
 import type { SourceConnector } from "../connectors/types.js";
 
 function argValue(name: string): string | undefined {
@@ -36,9 +37,23 @@ if (triggerArg !== undefined && triggerArg !== "manual" && triggerArg !== "sched
 }
 const trigger: CollectTrigger = triggerArg === "scheduled" ? "scheduled" : "manual";
 
-/** Fontes reais habilitadas — cada uma verificada e registrada em docs/FONTES.md. */
-function defaultConnectors(): SourceConnector[] {
-  return [new RemotiveConnector(), new RemoteOkConnector(), new NubeConnector()];
+/**
+ * Fontes reais habilitadas — cada uma verificada e registrada em docs/FONTES.md.
+ * O JSearch (RapidAPI) só entra quando a chave está configurada; sem ela, as
+ * demais fontes continuam funcionando.
+ */
+function defaultConnectors(config: AppConfig): SourceConnector[] {
+  const connectors: SourceConnector[] = [
+    new RemotiveConnector(),
+    new RemoteOkConnector(),
+    new NubeConnector(),
+  ];
+  if (config.rapidapi) {
+    connectors.push(
+      new JSearchConnector({ apiKey: config.rapidapi.key, host: config.rapidapi.host }),
+    );
+  }
+  return connectors;
 }
 
 const config = loadConfig();
@@ -48,7 +63,7 @@ const holder = new DbHolder(config, logger);
 try {
   const result = await runCollect(
     { config, holder, ai: null },
-    { connectors: defaultConnectors(), trigger },
+    { connectors: defaultConnectors(config), trigger },
   );
 
   console.log(`Coleta ${result.status} (execução #${result.runId}, ${trigger})`);

@@ -45,6 +45,11 @@ export interface SafeFetchOptions {
   allowedContentTypes?: string[];
   /** User-Agent enviado (padrão identificável; veja Seção 6.4 da especificação). */
   userAgent?: string;
+  /**
+   * Cabeçalhos extras (ex.: `X-RapidAPI-Key`). Valores com CR/LF são recusados
+   * para impedir injeção de cabeçalho; nunca são incluídos em mensagens de erro.
+   */
+  headers?: Record<string, string>;
 }
 
 function isPrivateIp(ip: string): boolean {
@@ -117,6 +122,19 @@ export function ipIsBlocked(ip: string, options: SafeFetchOptions = {}): boolean
   return true;
 }
 
+/**
+ * Recusa cabeçalhos com CR/LF (injeção) ou nomes inválidos. A mensagem cita
+ * apenas o nome do cabeçalho — nunca o valor, que pode conter segredo.
+ */
+function assertSafeHeaders(headers: Record<string, string> | undefined): void {
+  if (!headers) return;
+  for (const [name, value] of Object.entries(headers)) {
+    if (!/^[A-Za-z0-9-]+$/.test(name) || /[\r\n]/.test(value)) {
+      throw new AppError("FETCH_ERROR", 400, `Cabeçalho inválido recusado: "${name}".`);
+    }
+  }
+}
+
 function blocked(target: string): AppError {
   return new AppError(
     "FETCH_ERROR",
@@ -137,6 +155,7 @@ export async function fetchPublicResource(
   const maxBytes = options.maxBytes ?? MAX_BYTES;
   const allowedContentTypes = options.allowedContentTypes ?? DEFAULT_ALLOWED_CONTENT_TYPES;
   const userAgent = options.userAgent ?? "JobPilot/0.1 (local; contato: usuario-local)";
+  assertSafeHeaders(options.headers);
 
   let currentUrl: URL;
   try {
@@ -150,6 +169,9 @@ export async function fetchPublicResource(
   }
 
   let bytes = 0;
+  // Cabeçalhos com segredo (ex.: chave de API) valem só para o host original:
+  // se um redirecionamento mudar de host, eles deixam de ser enviados.
+  let extraHeaders = options.headers;
 
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     await assertPublicHost(currentUrl.hostname, options);
@@ -161,6 +183,7 @@ export async function fetchPublicResource(
       headers: {
         "User-Agent": userAgent,
         Accept: `${allowedContentTypes.join(", ")}, */*;q=0.5`,
+        ...extraHeaders,
       },
     }).catch((err: unknown) => {
       const isTimeout = err instanceof Error && err.name === "TimeoutError";
@@ -180,11 +203,13 @@ export async function fetchPublicResource(
         throw new AppError("FETCH_ERROR", 502, "Redirecionamento sem destino (Location vazio).");
       }
       response.body?.cancel().catch(() => {});
+      const previousHost = currentUrl.hostname;
       try {
         currentUrl = new URL(location, currentUrl);
       } catch {
         throw new AppError("FETCH_ERROR", 502, "Redirecionamento para URL inválida.");
       }
+      if (currentUrl.hostname !== previousHost) extraHeaders = undefined;
       if (currentUrl.protocol !== "http:" && currentUrl.protocol !== "https:") {
         throw new AppError("FETCH_ERROR", 400, "Redirecionamento para protocolo não permitido.");
       }

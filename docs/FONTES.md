@@ -6,7 +6,8 @@
 > **Metodologia:** requisição real à API com `User-Agent` identificável, conferência do corpo da
 > resposta, dos campos efetivamente presentes e das condições de uso publicadas. Datas de verificação:
 > Remotive em **2026-11-03**; Remote OK em **2026-11-04** (com reconferência de parâmetros e tags);
-> Nube e GitHub Issues em **2026-11-10**.
+> Nube e GitHub Issues em **2026-11-10**; RapidAPI/JSearch em **2026-11-10** (consulta) e
+> **2026-11-13** (execução real pelo pipeline).
 
 ## Resumo
 
@@ -16,7 +17,7 @@
 | Remote OK                      | ✅ implementada     | API pública (GET)          | 2026-11-04    |
 | Nube                           | ✅ implementada     | API pública (GET)          | 2026-11-10    |
 | GitHub Issues                  | ❌ não implementada | API pública (GET)          | 2026-11-10    |
-| RapidAPI (JSearch/LinkedIn)    | ⚠️ validada, não impl. | API de terceiro (chave)    | 2026-11-10    |
+| RapidAPI (JSearch)             | ✅ implementada     | API de terceiro (chave)    | 2026-11-10    |
 | Arbeitnow                      | ❌ não implementada | API pública (GET)          | 2026-11-03    |
 | Hacker News (Algolia)          | ❌ não implementada | API pública (GET)          | 2026-11-03    |
 
@@ -187,18 +188,16 @@
 - **Status:** não implementada. O custo de parsing não se justifica enquanto o volume de estágio for
   zero; pode ser reconsiderada como fonte complementar de “comunidade”.
 
-## RapidAPI (JSearch / LinkedIn) — validada, não implementada
+## RapidAPI (JSearch) — implementada (`backend/src/connectors/rapidapiJsearch.ts`)
 
 - **Plano detalhado:** [`docs/RAPIDAPI.md`](RAPIDAPI.md).
-- **Status:** nenhum código no repositório. A chave existe apenas no `.env` local (gitignored). Uma
-  consulta real ao **JSearch** foi feita em **2026-11-10**; o conector ainda **não** foi implementado.
-- **Candidatos:**
-  - **JSearch** — agrega Google Jobs, LinkedIn, Indeed e Glassdoor; endpoint atual **`/search-v2`**
-    (o antigo `/search` responde `404 Endpoint '/search' does not exist`);
-  - **scrapers de LinkedIn** — dezenas de APIs de terceiros, cada uma com formato próprio; maior
-    risco de quebra e de bloqueio.
-- **Verificação real do JSearch em 2026-11-10:**
-  - requisição: `GET https://jsearch.p.rapidapi.com/search-v2?query=est%C3%A1gio%20Curitiba&page=1&num_pages=1&country=br&date_posted=month`;
+- **Acesso:** `GET https://jsearch.p.rapidapi.com/search-v2`, com os cabeçalhos `X-RapidAPI-Key`
+  (só no `.env` gitignored) e `X-RapidAPI-Host`. O endpoint antigo `/search` responde
+  `404 Endpoint '/search' does not exist`.
+- **Status:** conector implementado em **2026-11-13**, com `supportState: "verified"` após execução
+  real pelo pipeline. Nenhuma chave, requisição ou payload real está versionado.
+- **Verificação real da consulta em 2026-11-10:**
+  - requisição: `GET /search-v2?query=est%C3%A1gio%20Curitiba&page=1&num_pages=1&country=br&date_posted=month`;
   - resposta: **HTTP 200**, **4,6 s**, **31.080 bytes**, `status: "OK"`, **10 vagas**;
   - **9 de 10** eram estágio e **10 de 10** em Curitiba; **0 remotas** (a consulta foi presencial);
   - formato: `{ status, request_id, parameters, data: { jobs: [...] } }` — **não** é `data[]`;
@@ -207,32 +206,45 @@
     `job_publisher`, `job_posted_at_datetime_utc`, `job_min_salary`/`job_max_salary`,
     `job_salary_string`, `job_benefits`, `job_highlights`, `apply_options`, entre outros;
   - `job_employment_type` vem **localizado em português** (“Estágio”, “Prestador de serviços”,
-    “Meio período”, “Tempo integral”), não como `INTERN`; o conector precisará normalizar o texto;
+    “Meio período”, “Tempo integral”), não como `INTERN`; o conector normaliza o texto e também
+    usa o título como fallback;
   - `job_posted_at_datetime_utc` veio **nulo nas 10 vagas** — a data não pode ser inventada;
   - os links de candidatura apontam para os portais de origem (Catho, Indeed, TOTVS, TalentBrand,
     trabajo.org), não para o RapidAPI;
   - cota gratuita observada: **200 requisições/mês** (`x-ratelimit-requests-limit: 200`), com
-    **195 restantes** após as sondagens. A cota é pequena: o conector deve usar cache e no máximo
-    uma página por execução.
-- **Riscos:** não são APIs oficiais; são raspagem de terceiros. Podem violar os termos do LinkedIn,
-  do Indeed e do Glassdoor, mudar de formato sem aviso e passar a cobrar depois da cota gratuita.
-  O JobPilot não contorna login, CAPTCHA ou bloqueio; se a API responder 401/403/429, a fonte falha
-  e as demais continuam.
-- **Preparação para a implementação:**
-  - variáveis: `RAPIDAPI_KEY` (obrigatória, só no `.env` gitignored) e `RAPIDAPI_HOST`
-    (`jsearch.p.rapidapi.com`);
-  - o conector implementará `SourceConnector` com `supportState: "unverified"` até a primeira
-    execução real pelo pipeline; só então passará a `"verified"` e será registrado nesta página;
-  - mapeamento previsto: `job_id` → `external_id`, `job_apply_link` (fallback `job_google_link`) →
-    `source_url`, `job_title`, `employer_name`, `job_city`/`job_country`, `job_is_remote` →
-    `workMode`, `job_employment_type` normalizado → `contractType`, `job_description` → texto puro,
-    `job_posted_at_datetime_utc` → `postedAt` (quando não nulo);
-  - cache de 15 min, timeout próprio, nenhuma candidatura automática e nenhum envio de currículo.
-- **Checklist antes de codar:** ~~criar a conta~~, ~~assinar o endpoint~~, ~~rodar uma consulta real~~,
-  ~~registrar status HTTP, campos e cota~~; falta confirmar os termos de uso do provedor e comparar
-  a cobertura com a Nube antes de implementar e testar offline com fixture.
-- **Custo:** a cota gratuita observada é de 200 requisições/mês; não há orçamento aprovado para
-  ultrapassá-la. Se a cota acabar, a fonte deve falhar de forma isolada, sem quebrar a coleta.
+    **195 restantes** após as sondagens.
+- **Execução real pelo pipeline em 2026-11-13 (banco temporário):**
+  - **4/4 fontes ok**; JSearch com **19 novas**, 1 duplicada e 0 filtradas;
+  - **19 de 19** vagas de estágio: **9 presenciais em Curitiba** e **10 remotas**;
+  - empresas reais reveladas (Positivo Tecnologia, Hospital Pequeno Príncipe, Votorantim, CCEE…);
+  - salário e `postedAt` ficaram nulos porque a fonte não os informou nessas vagas;
+  - nenhuma vaga foi gravada no banco real durante a validação.
+- **Consultas e consumo:** duas consultas por execução (`estágio Curitiba` e
+  `estágio remoto Brasil`), `num_pages=1`, `country=br`, `date_posted=month`. Com uma coleta diária
+  são ~60 das 200 requisições/mês. O payload fica em cache de 15 min, então `verify()` + `fetch()`
+  custam uma requisição por consulta.
+- **Campos usados pelo conector:** `job_id` (→ `external_id`), `job_apply_link` com fallback
+  `job_google_link` (→ `source_url`), `job_title`, `employer_name`, `job_city`/`job_state`
+  (→ localização), `job_is_remote` (→ `workMode`), `job_employment_type` + título (→ `contractType`),
+  `job_salary_string` (→ salário), `job_description` (→ texto puro), `job_posted_at_datetime_utc`
+  (→ `postedAt`, quando não nulo).
+- **Limitações conhecidas:**
+  - **não é API oficial:** é raspagem de terceiros (Google Jobs, LinkedIn, Indeed, Glassdoor), com
+    risco de violação de termos, mudança de formato e cobrança após a cota;
+  - `job_is_remote: false` é tratado como `onsite`; a fonte não distingue híbrido nessas vagas;
+  - `job_employment_type` é localizado e pode divergir do título; o conector só marca `internship`
+    quando o tipo **ou** o título indica estágio, e o restante fica `unknown`;
+  - salário e data podem vir nulos; nunca são inventados;
+  - a cota de 200/mês é pequena: se esgotar, a fonte falha isolada e as demais continuam;
+  - links apontam para Catho/Indeed/Glassdoor/LinkedIn e outros portais; o envio continua humano.
+- **Condições de uso:** a chave fica apenas no `.env` local e é enviada só no header; não aparece em
+  logs, mensagens de erro ou `payload_json`. O conector não contorna login, CAPTCHA ou bloqueio;
+  se a API responder 401/403/429, a fonte falha de forma isolada (`search_runs.status='partial'`).
+- **Cobertura de testes:** `backend/tests/unit/rapidapiJsearch.test.ts` — **16 testes offline** com
+  servidor local e fixture, cobrindo verificação, cache, cabeçalhos, formato atual e antigo,
+  mapeamento, empresa/local/modalidade, deduplicação entre consultas, `maxJobs`, aborto, ausência de
+  chave, 429 e recusa de chave com CR/LF. Também há 3 testes de cabeçalhos em `safeFetch.test.ts` e
+  3 de configuração em `config.test.ts`.
 
 ## Regras que valem para qualquer fonte
 
@@ -245,5 +257,5 @@
 4. **User-Agent identificável:** `JobPilot/0.1 (local; contato: usuario-local)` — trocar o contato
    pelo seu e-mail antes de uso em volume.
 5. **Respeitar limites:** cache de 15 min, timeout padrão de 30 s por fonte (fontes com paginação
-   pesada podem declarar `timeoutMs` próprio, como a Nube com 120 s) e falha de uma fonte **nunca**
-   aborta as demais.
+   pesada ou duas consultas podem declarar `timeoutMs` próprio: Nube 120 s, JSearch 45 s) e falha de
+   uma fonte **nunca** aborta as demais.

@@ -2,7 +2,7 @@
 
 **Status:** Fases 1–5 implementadas e Fase 6 iniciada com a Nube (atualizado em 2026-11-10). O envio automatizado nos portais permanece **fora de escopo** por decisão registrada em `docs/PORTAIS.md`.
 **Relação com o escopo:** detalha tecnicamente o `docs/ESCOPO.md` v1.1. Não substitui o escopo; quando divergirem, o escopo prevalece em requisitos funcionais.
-**Marco atual:** Fase 6.1 concluída — conector Nube para estágios em Curitiba/Grande Curitiba e home office, com paginação, detalhe via JSON-LD e cache. As fases 1–5 (fundação, coleta, IA, candidatura assistida, lembretes e consolidação) também estão implementadas e cobertas por testes. O JSearch (RapidAPI) foi **validado em 2026-11-10** com uma consulta real (10 vagas, 9 estágios em Curitiba; cota de 200/mês), mas o conector segue **não implementado**; Adzuna e Jooble continuam pendentes de chave.
+**Marco atual:** Fases 6.1 e 6.2 concluídas — conector Nube (estágios em Curitiba/Grande Curitiba e home office) e conector JSearch/RapidAPI (estágios em Curitiba e remotos), ambos com cache e validação real pelo pipeline. As fases 1–5 (fundação, coleta, IA, candidatura assistida, lembretes e consolidação) também estão implementadas e cobertas por testes. Adzuna e Jooble continuam pendentes de chave.
 
 ## 1. Princípios e decisões estruturais
 
@@ -673,7 +673,7 @@ Priorizar **APIs públicas e estáveis** antes de scraping. Verificar cada uma e
 | Hacker News (Who is hiring / Algolia HN API)        | API          | média                  | textinho; exige parse; bom para júnior                           |
 | Careerjet / Adzuna / USAJobs                        | API          | média                  | exigem chave de API (custo/limite)                               |
 | LinkedIn / Indeed / Glassdoor                       | HTML/Browser | **baixa / arriscada**  | ToS restritivos, CAPTCHA frequente; **não prometer suporte**     |
-| RapidAPI (JSearch / LinkedIn)                       | API de terceiro | baixa/média         | raspagem de terceiros; exigem chave, cota e validação de ToS      |
+| RapidAPI (JSearch)                                  | API de terceiro | alta (validada)     | implementada na Fase 6.2; chave própria, cota de 200/mês; ToS pendente |
 | Portais de ATS (Greenhouse, Lever, Ashby, Workable) | API/HTML     | média-alta             | têm endpoints públicos de vagas por empresa; bons para automação |
 
 **Regra:** um conector só recebe `support_state='verified'` após (a) `verify()` ok, (b) uma execução real bem-sucedida, (c) registro em `docs/FONTES.md`. Portais de ATS entram na Fase 4 como alvo de automação, não de coleta em massa.
@@ -682,7 +682,7 @@ Priorizar **APIs públicas e estáveis** antes de scraping. Verificar cada uma e
 
 - `User-Agent` identificável + identificação no README; `robots.txt` respeitado quando aplicável.
 - Rate limit por fonte (mínimo 1 req/s, backoff exponencial em 429).
-- Timeout por fonte (default 30 s; a fonte pode declarar `timeoutMs` próprio — a Nube usa 120 s por causa da paginação); falha em uma fonte **não** aborta as demais → `search_runs.status='partial'`.
+- Timeout por fonte (default 30 s; a fonte pode declarar `timeoutMs` próprio — a Nube usa 120 s por causa da paginação e o JSearch 45 s por causa das duas consultas); falha em uma fonte **não** aborta as demais → `search_runs.status='partial'`.
 - Cache de página/JSON por 15 min para evitar rebuscas repetidas.
 - Nenhuma fonte pode gerar mais de `MAX_JOBS_PER_RUN` (default 200) vagas por execução.
 
@@ -1065,7 +1065,7 @@ Regras (válidas desde o Marco 1):
 | #      | Tarefa                                      | CA                                                                                                 |
 | ------ | ------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | 6.1 ✅ | Conector Nube                               | `verify()`/`fetch()` reais; 39 vagas no recorte em 2026-11-10; 16 testes offline; `docs/FONTES.md` |
-| 6.2    | RapidAPI (JSearch ou LinkedIn)              | JSearch validado em 2026-11-10 (`/search-v2`, 10 vagas, 9 estágios em Curitiba, cota 200/mês); falta confirmar termos e comparar com a Nube antes de implementar; `supportState` fica `unverified` até a execução real |
+| 6.2 ✅ | Conector JSearch (RapidAPI)                 | `/search-v2` com cache e duas consultas; execução real em 2026-11-13: 4/4 fontes ok, 19 estágios (9 Curitiba, 10 remotos); 16 testes offline; cota 200/mês documentada |
 | 6.3    | Adzuna / Jooble                             | chaves gratuitas criadas pelo usuário; cobertura BR/Curitiba medida e registrada antes do código   |
 | 6.4    | GitHub Issues                               | verificado em 2026-11-10: 0 estágio aberto; não implementar enquanto o volume for irrelevante      |
 

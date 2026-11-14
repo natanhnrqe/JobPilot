@@ -16,6 +16,9 @@ const EnvSchema = z.object({
   AI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(300000).default(60000),
   // Teto diário em tokens (entrada + saída). 0 = sem limite.
   AI_DAILY_BUDGET: z.coerce.number().int().min(0).default(0),
+  // Integração com o RapidAPI (opcional — sem chave, a fonte JSearch fica desligada).
+  RAPIDAPI_KEY: z.string().optional(),
+  RAPIDAPI_HOST: z.string().default("jsearch.p.rapidapi.com"),
 });
 
 export interface AiConfig {
@@ -23,6 +26,12 @@ export interface AiConfig {
   baseUrl: string;
   model: string;
   timeoutMs: number;
+}
+
+/** RapidAPI (JSearch). A chave fica só no `.env` local e nunca é registrada. */
+export interface RapidApiConfig {
+  key: string;
+  host: string;
 }
 
 export interface AppConfig {
@@ -41,6 +50,8 @@ export interface AppConfig {
   aiDailyBudget: number;
   /** Presente somente quando AI_API_KEY está configurada. */
   ai: AiConfig | null;
+  /** Presente somente quando RAPIDAPI_KEY está configurada. */
+  rapidapi: RapidApiConfig | null;
 }
 
 /**
@@ -127,5 +138,6 @@ export function loadConfig(
           timeoutMs: e.AI_TIMEOUT_MS,
         }
       : null,
+    rapidapi: e.RAPIDAPI_KEY ? { key: e.RAPIDAPI_KEY, host: e.RAPIDAPI_HOST } : null,
   };
 }
