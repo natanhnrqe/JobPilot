@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api, qs } from "../api/client";
 import type { Job, Paged, WorkMode, ContractType, JobStatus } from "../api/types";
 import { useFetch, errorMessage } from "../lib/useFetch";
+import { updateFilterParams } from "../lib/searchParams";
 import {
   CONTRACT_TYPE_LABELS,
   formatDate,
@@ -31,7 +32,7 @@ export default function Jobs() {
   const q = searchParams.get("q") ?? "";
   const sort = searchParams.get("sort") ?? "";
   const includeDeleted = searchParams.get("includeDeleted") === "true";
-  const page = Number(searchParams.get("page") ?? "1");
+  const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
 
   const path = `/jobs${qs({ status, workMode, contractType, q, sort: sort || undefined, includeDeleted: includeDeleted ? "true" : undefined, page, pageSize: 20 })}`;
   const { data, error, loading, reload } = useFetch<Paged<Job>>(path);
@@ -42,11 +43,7 @@ export default function Jobs() {
   const [busy, setBusy] = useState(false);
 
   function updateFilter(key: string, value: string) {
-    const next = new URLSearchParams(searchParams);
-    if (value === "") next.delete(key);
-    else next.set(key, value);
-    next.delete("page");
-    setSearchParams(next);
+    setSearchParams(updateFilterParams(searchParams, key, value));
   }
 
   async function createJob(event: React.FormEvent) {

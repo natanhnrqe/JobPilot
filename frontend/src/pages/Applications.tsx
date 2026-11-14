@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api, qs } from "../api/client";
 import type { Application, ApplicationListItem, ApplicationStatus, Paged } from "../api/types";
 import { useFetch, errorMessage } from "../lib/useFetch";
+import { updateFilterParams } from "../lib/searchParams";
 import { APPLICATION_STATUS_LABELS, formatDate, formatDateTime } from "../lib/format";
 import { ApplicationStatusBadge } from "../components/StatusBadge";
 
@@ -11,7 +12,7 @@ export default function Applications() {
   const status = searchParams.get("status") ?? "";
   const q = searchParams.get("q") ?? "";
   const includeDeleted = searchParams.get("includeDeleted") === "true";
-  const page = Number(searchParams.get("page") ?? "1");
+  const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
 
   const path = `/applications${qs({ status, q, includeDeleted: includeDeleted || undefined, page, pageSize: 20 })}`;
   const { data, error, loading } = useFetch<Paged<ApplicationListItem>>(path);
@@ -20,11 +21,7 @@ export default function Applications() {
   const [busyId, setBusyId] = useState<number | null>(null);
 
   function updateFilter(key: string, value: string) {
-    const next = new URLSearchParams(searchParams);
-    if (value === "") next.delete(key);
-    else next.set(key, value);
-    next.delete("page");
-    setSearchParams(next);
+    setSearchParams(updateFilterParams(searchParams, key, value));
   }
 
   async function quickStatus(id: number, next: ApplicationStatus) {
