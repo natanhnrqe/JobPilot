@@ -39,8 +39,9 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 
 **Fase 3 — preferências de busca (fatia 1)**
 
-- ✅ **Preferências em Configurações**: tipos de contrato desejados e opção de incluir vagas sem nível informado
+- ✅ **Preferências em Configurações**: tipos de contrato desejados, palavras-chave da área e opção de incluir vagas sem nível informado
 - ✅ **Filtro aplicado na coleta** (manual e das 18:00): a vaga fora das preferências nem entra no banco; o resumo mostra quantas foram filtradas
+- ✅ **Filtro por área**: o título precisa conter uma palavra-chave; a descrição só conta para tecnologias específicas (Java, React, Docker…), evitando falsos positivos de “desenvolvimento”/“sistemas” em vagas de outras áreas
 - ✅ **Classificação pelo título** quando a fonte não informa o nível (caso do Remote OK): heurística conservadora, gravada como `contract_type_source = 'title'` e exibida como “classificado pelo título”
 - ✅ Padrão inicial: estágio, júnior/trainee e freelance, sem vagas de nível desconhecido — ajustável a qualquer momento
 - ✅ **Sem IA nesta etapa**: os filtros são determinísticos e não consomem chave nem créditos
@@ -54,7 +55,7 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 - ✅ **Edição manual** de dados pessoais, experiências, formação, habilidades, idiomas, projetos, preferências profissionais e respostas padrão para formulários
 - ✅ Rotas `GET/PUT /api/v1/profile`, `POST /api/v1/profile/cv` (prévia, não persiste) e `POST /api/v1/profile/cv/confirm`
 
-✅ **325 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, análise de compatibilidade, orçamento diário de IA, candidatura assistida, rascunho de candidatura com IA, lembretes de acompanhamento, exportação CSV/JSON, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, perfil, execuções e lock) — 100% offline, sem chave de IA e sem rede externa.
+✅ **351 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, análise de compatibilidade, orçamento diário de IA, candidatura assistida, rascunho de candidatura com IA, lembretes de acompanhamento, exportação CSV/JSON, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, filtro por área, perfil, execuções, paginação e lock) — 100% offline, sem chave de IA e sem rede externa.
 
 **Não implementado** (por design, por enquanto): envio automatizado nos portais (os alvos vedam bots — ver [`docs/PORTAIS.md`](docs/PORTAIS.md)), análise em lote e Playwright.
 
@@ -134,6 +135,7 @@ Fontes, campos, limites e condições de uso: [`docs/FONTES.md`](docs/FONTES.md)
 Em **Configurações → Preferências de busca** você escolhe quais tipos de contrato a coleta deve aceitar: estágio, júnior/trainee, pleno, sênior e freelance. A regra vale para a próxima coleta (manual ou automática das 18:00) e **não altera vagas já cadastradas**.
 
 - **Nenhum tipo marcado** = sem filtro por tipo de contrato (a coleta aceita tudo, como antes).
+- **Área de interesse**: uma palavra/frase por linha (ex.: `desenvolvimento`, `backend`, `java`, `react`). A vaga entra se o **título** contiver alguma palavra-chave; a **descrição** só conta para tecnologias específicas (Java, React, Docker, SQL…). Palavras genéricas como “desenvolvimento” e “sistemas” são usadas apenas no título para não aprovar vagas de marketing, logística ou administração. Vazio = sem filtro por área.
 - **Incluir vagas sem nível informado**: quando marcado, vagas cujo nível a fonte não informa e o título não permite classificar também entram.
 - **Classificação pelo título**: se a fonte não informa o nível, o JobPilot aplica uma heurística conservadora ao título (“Estágio”, “Estagiário”, “Intern”, “Júnior”, “Jr”, “Trainee”, “Freelance”, “Pleno”, “Sênior”, “Sr”, “Lead”…). A vaga é marcada como **classificada pelo título** e guarda `contract_type_source = 'title'` — nunca é apresentada como informação da fonte.
 - **Remote OK** não informa nível. Com o filtro estrito (sem “sem nível informado”), nenhuma vaga dele entra, a menos que o título permita a classificação.
@@ -202,7 +204,7 @@ As rotas são `GET /api/v1/profile`, `PUT /api/v1/profile`, `POST /api/v1/profil
 - ✅ **Canal de notificação**: painel de pendências + **notificação desktop opcional** (ativação em Configurações); no máximo uma vez por lembrete por dia
 - ✅ Falha de permissão ou de exibição da notificação fica **apenas no console** — o dashboard e o restante do app continuam funcionando
 - ✅ **Backup semanal automático** opcional no Windows (`scripts/install-backup-task.ps1`), mantendo a retenção de 14 backups
-- ✅ **Revisão de segurança e regressão** em [`docs/SEGURANCA.md`](docs/SEGURANCA.md): sem segredos versionados, restore testado, 325 testes verdes
+- ✅ **Revisão de segurança e regressão** em [`docs/SEGURANCA.md`](docs/SEGURANCA.md): sem segredos versionados, restore testado, 351 testes verdes
 
 ## Página de Execuções
 

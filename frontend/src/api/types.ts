@@ -20,6 +20,8 @@ export type SearchContractType = (typeof SEARCH_CONTRACT_TYPES)[number];
 export interface SearchPreferences {
   contractTypes: SearchContractType[];
   includeUnknownContractType: boolean;
+  /** Palavras/frases da área; vazio = não filtra por área. */
+  areaKeywords: string[];
   updatedAt: string;
 }
 

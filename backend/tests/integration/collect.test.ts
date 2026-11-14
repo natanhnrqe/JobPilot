@@ -567,4 +567,69 @@ describe("Execução de coleta — preferências de busca", () => {
     );
     expect(row).toEqual({ contract_type: "internship", contract_type_source: "source" });
   });
+
+  it("filtra por área no título ou na descrição", async () => {
+    setSearchPreferences(db(), {
+      contractTypes: ["internship"],
+      includeUnknownContractType: false,
+      areaKeywords: ["desenvolvimento", "backend", "java"],
+    });
+
+    const connector = fakeConnector({
+      key: "fonte-a",
+      jobs: [
+        rawJob("Estágio em Desenvolvimento", "https://fonte-a.example.com/vagas/1", {
+          externalId: "a-1",
+          contractType: "internship",
+        }),
+        rawJob("Estágio em Tecnologia", "https://fonte-a.example.com/vagas/2", {
+          externalId: "a-2",
+          contractType: "internship",
+          descriptionText: "Requisitos: Java e Spring Boot.",
+        }),
+        rawJob("Estágio em Marketing", "https://fonte-a.example.com/vagas/3", {
+          externalId: "a-3",
+          contractType: "internship",
+          descriptionText: "Redes sociais e campanhas.",
+        }),
+        rawJob("Estágio em Logística", "https://fonte-a.example.com/vagas/4", {
+          externalId: "a-4",
+          contractType: "internship",
+          descriptionText: "Rotinas de estoque.",
+        }),
+      ],
+    });
+
+    const result = await runCollect(server.ctx, { connectors: [connector], trigger: "manual" });
+
+    expect(result.created).toBe(2);
+    expect(result.filtered).toBe(2);
+    const titles = db()
+      .all<{ title: string }>("SELECT title FROM jobs ORDER BY id")
+      .map((row) => row.title);
+    expect(titles).toEqual(["Estágio em Desenvolvimento", "Estágio em Tecnologia"]);
+  });
+
+  it("áreas vazias não filtram (comportamento anterior preservado)", async () => {
+    setSearchPreferences(db(), {
+      contractTypes: ["internship"],
+      includeUnknownContractType: false,
+      areaKeywords: [],
+    });
+
+    const connector = fakeConnector({
+      key: "fonte-a",
+      jobs: [
+        rawJob("Estágio em Marketing", "https://fonte-a.example.com/vagas/1", {
+          externalId: "a-1",
+          contractType: "internship",
+        }),
+      ],
+    });
+
+    const result = await runCollect(server.ctx, { connectors: [connector], trigger: "manual" });
+
+    expect(result.created).toBe(1);
+    expect(result.filtered).toBe(0);
+  });
 });

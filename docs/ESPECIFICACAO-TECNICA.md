@@ -1,8 +1,8 @@
 # JobPilot — Especificação Técnica v1.1
 
-**Status:** Fases 1–5 implementadas e Fase 6 iniciada com a Nube (atualizado em 2026-11-10). O envio automatizado nos portais permanece **fora de escopo** por decisão registrada em `docs/PORTAIS.md`.
+**Status:** Fases 1–5 implementadas e Fase 6 em andamento (Nube, JSearch e filtro por área; atualizado em 2026-11-13). O envio automatizado nos portais permanece **fora de escopo** por decisão registrada em `docs/PORTAIS.md`.
 **Relação com o escopo:** detalha tecnicamente o `docs/ESCOPO.md` v1.1. Não substitui o escopo; quando divergirem, o escopo prevalece em requisitos funcionais.
-**Marco atual:** Fases 6.1 e 6.2 concluídas — conector Nube (estágios em Curitiba/Grande Curitiba e home office) e conector JSearch/RapidAPI (estágios em Curitiba e remotos), ambos com cache e validação real pelo pipeline. As fases 1–5 (fundação, coleta, IA, candidatura assistida, lembretes e consolidação) também estão implementadas e cobertas por testes. Adzuna e Jooble continuam pendentes de chave.
+**Marco atual:** Fases 6.1 e 6.2 concluídas — conector Nube (estágios em Curitiba/Grande Curitiba e home office) e conector JSearch/RapidAPI (estágios em Curitiba e remotos), ambos com cache e validação real pelo pipeline. O filtro por área (6.5) também está implementado: a coleta só grava vagas cujo título contém uma palavra-chave da área ou cuja descrição cita uma tecnologia específica. As fases 1–5 (fundação, coleta, IA, candidatura assistida, lembretes e consolidação) estão implementadas e cobertas por testes. Adzuna e Jooble continuam pendentes de chave.
 
 ## 1. Princípios e decisões estruturais
 
@@ -1068,6 +1068,7 @@ Regras (válidas desde o Marco 1):
 | 6.2 ✅ | Conector JSearch (RapidAPI)                 | `/search-v2` com cache e duas consultas; execução real em 2026-11-13: 4/4 fontes ok, 19 estágios (9 Curitiba, 10 remotos); 16 testes offline; cota 200/mês documentada |
 | 6.3    | Adzuna / Jooble                             | chaves gratuitas criadas pelo usuário; cobertura BR/Curitiba medida e registrada antes do código   |
 | 6.4    | GitHub Issues                               | verificado em 2026-11-10: 0 estágio aberto; não implementar enquanto o volume for irrelevante      |
+| 6.5 ✅ | Filtro por área na coleta                   | `search_preferences.area_keywords` (migração 011) editável em Configurações; título aceita qualquer palavra-chave, descrição só tecnologias específicas; lista vazia = sem filtro; 16 testes unitários + integração de coleta/API |
 
 ## 13. Ordem de implementação recomendada e primeiro marco
 

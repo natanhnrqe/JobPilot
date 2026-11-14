@@ -22,7 +22,7 @@ portais** e que os fluxos críticos têm teste de regressão.
 | 11  | Busca por URL protegida contra SSRF       | bloqueio de IPs privados/esquemas, limites de tempo/tamanho; `safeFetch.test.ts`        | ✅     |
 | 12  | Exclusão preserva histórico               | soft delete; exportação inclui `deleted_at`                                             | ✅     |
 | 13  | Lembretes não alteram status sozinhos     | `reminders.api.test.ts`; conclusão é ação do usuário                                    | ✅     |
-| 14  | Regressão completa                        | **325 testes / 35 arquivos**; `lint`, `format:check` e `build` verdes                   | ✅     |
+| 14  | Regressão completa                        | **351 testes / 37 arquivos**; `lint`, `format:check` e `build` verdes                   | ✅     |
 | 15  | Chave do RapidAPI não vaza                | só no `.env`; enviada no header; recusa CR/LF e remove o segredo em redirecionamento    | ✅     |
 
 ## Comandos usados na revisão

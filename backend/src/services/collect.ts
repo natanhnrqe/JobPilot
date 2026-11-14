@@ -44,6 +44,7 @@ import {
 } from "../domain/contractType.js";
 import { normalizePostedAt } from "../ai/schemas.js";
 import { getSearchPreferences, type SearchPreferences } from "../repositories/preferences.js";
+import { matchesArea } from "../domain/areaFilter.js";
 import { createJob } from "./jobs.js";
 import { acquireLock } from "./lock.js";
 
@@ -482,6 +483,12 @@ function persistRawJob(
   // nem entra no banco (e não altera o histórico de vagas já conhecidas).
   const contract = resolveContractType(raw);
   if (!matchesContractPreference(contract.type, preferences)) {
+    return "filtered";
+  }
+
+  // Filtro por área: só grava se o título/descrição contiver alguma palavra-chave.
+  // Lista vazia mantém o comportamento anterior (sem filtro por área).
+  if (!matchesArea(raw.title, raw.descriptionText, preferences.areaKeywords)) {
     return "filtered";
   }
 

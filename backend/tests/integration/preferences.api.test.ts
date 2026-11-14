@@ -26,6 +26,7 @@ describe("API de preferências de busca", () => {
     expect(res.body).toMatchObject({
       contractTypes: ["internship", "junior", "freelance"],
       includeUnknownContractType: false,
+      areaKeywords: [],
     });
     expect(typeof res.body.updatedAt).toBe("string");
   });
@@ -90,6 +91,46 @@ describe("API de preferências de busca", () => {
 
   it("rejeita corpo vazio com 400", async () => {
     const res = await request(server.app).put("/api/v1/preferences").send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("salva e devolve as palavras-chave de área normalizadas", async () => {
+    const res = await request(server.app)
+      .put("/api/v1/preferences")
+      .send({ areaKeywords: ["  Desenvolvimento  ", "desenvolvimento", "Front-end", "java"] });
+
+    expect(res.status).toBe(200);
+    expect(res.body.areaKeywords).toEqual(["Desenvolvimento", "Front-end", "java"]);
+
+    const get = await request(server.app).get("/api/v1/preferences");
+    expect(get.body.areaKeywords).toEqual(["Desenvolvimento", "Front-end", "java"]);
+  });
+
+  it("aceita lista de áreas vazia (sem filtro por área)", async () => {
+    const res = await request(server.app).put("/api/v1/preferences").send({ areaKeywords: [] });
+
+    expect(res.status).toBe(200);
+    expect(res.body.areaKeywords).toEqual([]);
+  });
+
+  it("PUT parcial mantém as áreas quando só o contrato muda", async () => {
+    await request(server.app)
+      .put("/api/v1/preferences")
+      .send({ areaKeywords: ["backend"] });
+
+    const res = await request(server.app)
+      .put("/api/v1/preferences")
+      .send({ contractTypes: ["internship"] });
+
+    expect(res.body.areaKeywords).toEqual(["backend"]);
+  });
+
+  it("rejeita mais de 20 palavras-chave com 400", async () => {
+    const res = await request(server.app)
+      .put("/api/v1/preferences")
+      .send({ areaKeywords: Array.from({ length: 21 }, (_, i) => `area-${i}`) });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("VALIDATION_ERROR");

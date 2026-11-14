@@ -97,7 +97,7 @@ As migrações são arquivos SQL versionados em `backend/migrations/` e são **i
 ## 8. Testes e build
 
 ```powershell
-npm test        # 325 testes (backend); 100% offline, banco temporário por arquivo de teste
+npm test        # 351 testes (backend); 100% offline, banco temporário por arquivo de teste
 npm run build   # compila backend (tsc → backend/dist) e frontend (vite → frontend/dist)
 ```
 
