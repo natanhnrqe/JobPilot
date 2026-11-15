@@ -79,6 +79,27 @@ const DESCRIPTION_SAFE_TERMS = new Set([
   "vue",
 ]);
 
+/**
+ * "Desenvolvimento" também nomeia cargos comerciais ("desenvolvimento de
+ * clientes/negócios/vendas"). Sem nenhum termo técnico no título, essas
+ * frases não devem aprovar a vaga.
+ */
+const NON_TECH_DEVELOPMENT_PHRASES: string[][] = [
+  ["desenvolvimento", "de", "clientes"],
+  ["desenvolvimento", "de", "negocios"],
+  ["desenvolvimento", "de", "vendas"],
+  ["desenvolvimento", "de", "mercado"],
+  ["desenvolvimento", "de", "pessoas"],
+  ["desenvolvimento", "de", "fornecedores"],
+  ["desenvolvimento", "de", "carreira"],
+  ["desenvolvimento", "comercial"],
+  ["desenvolvimento", "organizacional"],
+  ["desenvolvedor", "de", "clientes"],
+  ["desenvolvedor", "de", "negocios"],
+  ["desenvolvedor", "de", "vendas"],
+  ["desenvolvedor", "comercial"],
+];
+
 /** Remove vazios, normaliza espaços e deduplica sem diferenciar acentos/caixa. */
 export function normalizeAreaKeywords(values: readonly string[]): string[] {
   const seen = new Set<string>();
@@ -118,10 +139,22 @@ export function matchesArea(
     const needle = tokenize(keyword);
     if (needle.length === 0) return false;
 
-    if (matchesTokens(titleTokens, titleCompact, needle)) return true;
+    if (
+      matchesTokens(titleTokens, titleCompact, needle) &&
+      !isNonTechTitleMatch(titleTokens, needle)
+    ) {
+      return true;
+    }
     if (!isDescriptionSafe(needle)) return false;
     return matchesTokens(descriptionTokens, descriptionCompact, needle);
   });
+}
+
+/** Ignora "desenvolvimento de clientes/negócios/..." no título. */
+function isNonTechTitleMatch(titleTokens: string[], needle: string[]): boolean {
+  const key = needle.join("");
+  if (key !== "desenvolvimento" && key !== "desenvolvedor") return false;
+  return NON_TECH_DEVELOPMENT_PHRASES.some((phrase) => containsTokenSequence(titleTokens, phrase));
 }
 
 function matchesTokens(tokens: string[], compact: string, needle: string[]): boolean {

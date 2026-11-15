@@ -28,9 +28,10 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 
 **Fase 2 — coleta de vagas**
 
-- ✅ **Conectores Remotive, Remote OK, Nube e JSearch** verificados na prática e registrados em [`docs/FONTES.md`](docs/FONTES.md)
+- ✅ **Conectores Remotive, Remote OK, Nube, JSearch e LinkedIn Jobs** verificados na prática e registrados em [`docs/FONTES.md`](docs/FONTES.md)
 - ✅ **Nube** (2026-11-10): estágios em Curitiba/Grande Curitiba e home office; a empresa contratante geralmente só aparece no site da vaga
 - ✅ **JSearch/RapidAPI** (2026-11-13): estágios em Curitiba e remotos; exige `RAPIDAPI_KEY` no `.env` (cota gratuita de 200 consultas/mês)
+- ✅ **LinkedIn Jobs/RapidAPI** (2026-11-14): estágios em Curitiba e remotos; exige `RAPIDAPI_KEY` + `LINKEDIN_API_HOST` e usa cache semanal para caber na cota gratuita (25 requisições e 250 vagas/mês)
 - ✅ **CLI de coleta** (`npm run collect`): busca as fontes, grava pelo mesmo caminho do cadastro manual, deduplica e registra a execução em `search_runs` + `execution_logs`
 - ✅ **Lock de execução** (`data/.lock`): duas execuções simultâneas → a segunda fica `skipped`, sem corromper dados
 - ✅ Falha de uma fonte **não derruba as demais** (`status='partial'`) e o resumo fica em `data/last-run.json`
@@ -55,11 +56,11 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 - ✅ **Edição manual** de dados pessoais, experiências, formação, habilidades, idiomas, projetos, preferências profissionais e respostas padrão para formulários
 - ✅ Rotas `GET/PUT /api/v1/profile`, `POST /api/v1/profile/cv` (prévia, não persiste) e `POST /api/v1/profile/cv/confirm`
 
-✅ **351 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, análise de compatibilidade, orçamento diário de IA, candidatura assistida, rascunho de candidatura com IA, lembretes de acompanhamento, exportação CSV/JSON, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, filtro por área, perfil, execuções, paginação e lock) — 100% offline, sem chave de IA e sem rede externa.
+✅ **372 testes automatizados** (domínio, API, extração de vagas e CV, PDF/DOCX, análise de compatibilidade, orçamento diário de IA, candidatura assistida, rascunho de candidatura com IA, lembretes de acompanhamento, exportação CSV/JSON, provedor real de IA por loopback com retentativas, SSRF, duplicatas, config, backup/restore, conectores, coleta, preferências de busca, filtro por área, perfil, execuções, paginação e lock) — 100% offline, sem chave de IA e sem rede externa.
 
 **Não implementado** (por design, por enquanto): envio automatizado nos portais (os alvos vedam bots — ver [`docs/PORTAIS.md`](docs/PORTAIS.md)), análise em lote e Playwright.
 
-**Preparado, não implementado:** Adzuna e Jooble, que exigem chave gratuita criada pelo usuário. O JSearch está implementado — veja [`docs/RAPIDAPI.md`](docs/RAPIDAPI.md).
+**Preparado, não implementado:** Adzuna e Jooble, que exigem chave gratuita criada pelo usuário. JSearch e LinkedIn Jobs estão implementados — veja [`docs/RAPIDAPI.md`](docs/RAPIDAPI.md).
 
 ## Requisitos
 
@@ -114,7 +115,7 @@ npm run db:migrate
 
 ## Coleta de vagas (CLI)
 
-Busca as fontes verificadas (Remotive, Remote OK, Nube e JSearch, se a chave estiver configurada) e grava as vagas novas:
+Busca as fontes verificadas (Remotive, Remote OK, Nube, JSearch e LinkedIn Jobs, se as chaves estiverem configuradas) e grava as vagas novas:
 
 ```powershell
 npm run collect
@@ -126,6 +127,7 @@ npm run collect
 - Código de saída: `0` para sucesso/parcial, `1` para falha total.
 - A **Nube** não tem filtro por cidade na API: o conector baixa a listagem (13 páginas, ~54 s), filtra **Curitiba/Grande Curitiba e home office** e busca o detalhe só dessas vagas. A empresa contratante geralmente só aparece no site da vaga.
 - O **JSearch** usa duas consultas por execução (`estágio Curitiba` e `estágio remoto Brasil`), com cache de 15 min e cota gratuita de 200 consultas/mês. Sem `RAPIDAPI_KEY` no `.env`, a fonte fica desligada.
+- O **LinkedIn Jobs** usa duas consultas por execução (Curitiba e Brasil remoto) com `limit=20` e cache em arquivo de **6 dias**: uma coleta diária só consome a API uma vez por semana. A cota gratuita é de **25 requisições e 250 vagas/mês**; sem `LINKEDIN_API_HOST` no `.env`, a fonte fica desligada.
 - O agendamento automático (Windows, 18:00) usa `scripts/install-task.ps1`; veja a seção seguinte.
 
 Fontes, campos, limites e condições de uso: [`docs/FONTES.md`](docs/FONTES.md).
@@ -204,14 +206,14 @@ As rotas são `GET /api/v1/profile`, `PUT /api/v1/profile`, `POST /api/v1/profil
 - ✅ **Canal de notificação**: painel de pendências + **notificação desktop opcional** (ativação em Configurações); no máximo uma vez por lembrete por dia
 - ✅ Falha de permissão ou de exibição da notificação fica **apenas no console** — o dashboard e o restante do app continuam funcionando
 - ✅ **Backup semanal automático** opcional no Windows (`scripts/install-backup-task.ps1`), mantendo a retenção de 14 backups
-- ✅ **Revisão de segurança e regressão** em [`docs/SEGURANCA.md`](docs/SEGURANCA.md): sem segredos versionados, restore testado, 351 testes verdes
+- ✅ **Revisão de segurança e regressão** em [`docs/SEGURANCA.md`](docs/SEGURANCA.md): sem segredos versionados, restore testado, 372 testes verdes
 
 ## Página de Execuções
 
 Com o servidor rodando, abra **<http://localhost:5173/execucoes>** em desenvolvimento (`npm run dev`) ou **<http://127.0.0.1:3000/execucoes>** com a interface compilada (`npm start`), ou clique em **Execuções** no menu. A página mostra:
 
 - **Resumo da última coleta** gravado em `data/last-run.json`;
-- **Fontes registradas** (Remotive, Remote OK, Nube e JSearch) com estado de verificação e se estão habilitadas;
+- **Fontes registradas** (Remotive, Remote OK, Nube, JSearch e LinkedIn Jobs) com estado de verificação e se estão habilitadas;
 - **Histórico** das execuções com origem (manual/agendada), status, duração, contagens e resumo;
 - **Logs** de cada execução (passo, nível, mensagem e detalhes) ao clicar em _Ver logs_.
 

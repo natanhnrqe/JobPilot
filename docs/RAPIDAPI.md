@@ -1,9 +1,9 @@
-# RapidAPI — JSearch implementado
+# RapidAPI — JSearch e LinkedIn Jobs implementados
 
-> **Status em 2026-11-13:** conector implementado em `backend/src/connectors/rapidapiJsearch.ts` e
-> validado por uma execução real do pipeline (4/4 fontes ok; 19 vagas de estágio, 9 presenciais em
-> Curitiba e 10 remotas). A chave fica apenas no `.env` local (gitignored). O endpoint usado é
-> `/search-v2`; o antigo `/search` responde 404.
+> **Status em 2026-11-14:** dois conectores implementados e validados por requisições reais:
+> **JSearch** em `backend/src/connectors/rapidapiJsearch.ts` (endpoint `/search-v2`) e
+> **LinkedIn Jobs** em `backend/src/connectors/linkedinJobs.ts` (endpoint `/active-jb`). As chaves
+> ficam apenas no `.env` local (gitignored).
 
 ## Por que a decisão não é automática
 
@@ -166,3 +166,87 @@ Regras: não inventar empresa, salário ou data; vagas sem URL ou título são d
 - Sua confirmação sobre os termos de uso do provedor e dos portais de origem.
 - Monitorar a cota mensal (200) e decidir se a fonte continua valendo a pena.
 - Reavaliar a cobertura de vagas híbridas (a fonte só informa remoto/sem remoto).
+
+---
+
+# LinkedIn Job Search API — implementado em 2026-11-14
+
+Provedor: **Fantastic Jobs** (`linkedin-job-search-api.p.rapidapi.com`), acessado pelo RapidAPI com a
+**mesma** `RAPIDAPI_KEY` do JSearch. O host fica em `LINKEDIN_API_HOST` no `.env`.
+
+## Validação real (2026-11-14)
+
+| Requisição | Resultado |
+| --- | --- |
+| `GET /active-jb?time_frame=7d&limit=5&offset=0&description_format=text&title="estágio" OR "estagiário"&location="Curitiba"` | **HTTP 200**, array de vagas, ~2,8 s, 2 vagas |
+| `GET /active-jb?...&location="Brazil"&ai_work_arrangement=Remote OK,Remote Solely` | **HTTP 200**, array de vagas, 5 vagas |
+| Execução do conector com `limit=5` (Curitiba + remoto) | **10 vagas**, 10 de 10 estágio; mapeamento conferido |
+
+**Cota observada no plano Basic (gratuito):**
+
+```http
+x-ratelimit-requests-limit: 25        # requisições por mês
+x-ratelimit-jobs-limit: 250           # vagas devolvidas por mês
+```
+
+Cada vaga devolvida consome a cota de vagas, mesmo que seja filtrada depois. Por isso o conector
+**não** roda diariamente contra a API: ele usa cache em arquivo por 6 dias e faz 2 requisições por
+semana (`limit=20` cada), o que fica em ~8 requisições e até ~170 vagas/mês.
+
+## Formato da resposta
+
+`GET /active-jb` devolve um **array** de objetos (não `{ data: ... }`). Campos usados:
+
+| Campo da API | Campo do `RawJob` |
+| --- | --- |
+| `id` / `linkedin_id` | `externalId` |
+| `url` | `sourceUrl` |
+| `title` | `title` |
+| `organization` | `company` |
+| `locations_derived[0]` (fallback: endereço) | `location` |
+| `ai_work_arrangement` / `location_type` | `workMode` |
+| `seniority` + título + `employment_type` | `contractType` |
+| `salary` (texto) | `salaryText` |
+| `description_text` | `descriptionText` (HTML → texto) |
+| `date_posted` | `postedAt` (sem fuso → tratado como UTC) |
+| payload cru | `raw` |
+
+Regras: `ai_salary_*` é estimativa de IA e **não** vira salário; `employment_type` pode ser
+`FULL_TIME` mesmo em estágio (o tipo é resolvido por `seniority` + título); data inválida fica
+indefinida; vagas sem título ou URL são descartadas; nenhum login, CAPTCHA ou envio automático.
+
+## Variáveis de ambiente
+
+```dotenv
+RAPIDAPI_KEY=...                                  # a mesma chave do JSearch
+LINKEDIN_API_HOST=linkedin-job-search-api.p.rapidapi.com
+```
+
+> **Atenção:** o leitor de `.env` do projeto não remove comentário na mesma linha. Use
+> `RAPIDAPI_KEY=...` sozinho; comentários vão em linhas começando com `#`.
+
+## Contrato implementado
+
+```ts
+readonly key = "rapidapi-linkedin";
+readonly name = "LinkedIn Jobs (RapidAPI)";
+readonly kind = "api";
+readonly supportState = "verified";
+readonly timeoutMs = 45_000;
+```
+
+- `verify()` consulta a primeira query (Curitiba) e aceita lista vazia como resposta válida.
+- `fetch()` consulta Curitiba e Brasil remoto, deduplica por id/URL e respeita `maxJobs`.
+- Cache em memória + arquivo (`data/cache/linkedin-jobs.json`, TTL 6 dias) para sobreviver entre
+  execuções do CLI e não estourar a cota.
+- Falha de rede/parse vira `SourceError`; 401/403/429 mantêm a fonte isolada.
+
+## Checklist
+
+- [x] Chave do RapidAPI configurada no `.env` (nunca commitada).
+- [x] Assinatura do provedor confirmada com uma requisição real (HTTP 200).
+- [x] Formato, campos e cota registrados nesta página.
+- [x] Conector implementado com cache semanal e testes offline.
+- [x] Validação real do mapeamento com `limit=5` (10 vagas, todas estágio).
+- [ ] Sua confirmação sobre os termos de uso do provedor e do LinkedIn.
+- [ ] Monitorar a cota (25 requisições / 250 vagas por mês); não usar coleta diária sem o cache.

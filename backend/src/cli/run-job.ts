@@ -9,6 +9,7 @@
  * O CLI roda sem o servidor da API (acessa o SQLite diretamente).
  */
 
+import path from "node:path";
 import { loadConfig, type AppConfig } from "../config/index.js";
 import { DbHolder } from "../db/holder.js";
 import { createLogger } from "../logging/logger.js";
@@ -17,6 +18,7 @@ import { RemotiveConnector } from "../connectors/remotive.js";
 import { RemoteOkConnector } from "../connectors/remoteok.js";
 import { NubeConnector } from "../connectors/nube.js";
 import { JSearchConnector } from "../connectors/rapidapiJsearch.js";
+import { LinkedInJobsConnector } from "../connectors/linkedinJobs.js";
 import type { SourceConnector } from "../connectors/types.js";
 
 function argValue(name: string): string | undefined {
@@ -51,6 +53,16 @@ function defaultConnectors(config: AppConfig): SourceConnector[] {
   if (config.rapidapi) {
     connectors.push(
       new JSearchConnector({ apiKey: config.rapidapi.key, host: config.rapidapi.host }),
+    );
+  }
+  if (config.rapidapi && config.linkedinApiHost) {
+    connectors.push(
+      new LinkedInJobsConnector({
+        apiKey: config.rapidapi.key,
+        host: config.linkedinApiHost,
+        // Cache em arquivo: uma coleta diária só consome cota uma vez por semana.
+        cacheFile: path.join(config.dataDir, "cache", "linkedin-jobs.json"),
+      }),
     );
   }
   return connectors;

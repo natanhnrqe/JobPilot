@@ -107,3 +107,34 @@ describe("loadConfig — RapidAPI (JSearch)", () => {
     expect(config.rapidapi?.host).toBe("outro.p.rapidapi.com");
   });
 });
+
+describe("loadConfig — LinkedIn Jobs (RapidAPI)", () => {
+  it("sem LINKEDIN_API_HOST, linkedinApiHost é null", () => {
+    const config = loadConfig({ DATA_DIR: "ignorado-nos-testes" }, { backendDir: process.cwd() });
+
+    expect(config.linkedinApiHost).toBeNull();
+  });
+
+  it("expõe o host do LinkedIn quando configurado", () => {
+    const config = loadConfig(
+      {
+        RAPIDAPI_KEY: "chave-de-teste",
+        LINKEDIN_API_HOST: "linkedin-job-search-api.p.rapidapi.com",
+        DATA_DIR: "ignorado-nos-testes",
+      },
+      { backendDir: process.cwd() },
+    );
+
+    expect(config.linkedinApiHost).toBe("linkedin-job-search-api.p.rapidapi.com");
+    expect(config.rapidapi?.key).toBe("chave-de-teste");
+  });
+
+  it("ignora host em branco", () => {
+    const config = loadConfig(
+      { LINKEDIN_API_HOST: "   ", DATA_DIR: "ignorado-nos-testes" },
+      { backendDir: process.cwd() },
+    );
+
+    expect(config.linkedinApiHost).toBeNull();
+  });
+});

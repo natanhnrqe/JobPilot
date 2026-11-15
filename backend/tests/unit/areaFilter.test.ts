@@ -94,6 +94,23 @@ describe("filtro por área — correspondência", () => {
     ).toBe(false);
   });
 
+  it("não aprova 'desenvolvimento de clientes/negócios' no título", () => {
+    expect(
+      matchesArea("Estágio em Desenvolvimento de Clientes - Colgate", "", ["desenvolvimento"]),
+    ).toBe(false);
+    expect(matchesArea("Estágio em Desenvolvimento de Negócios", "", ["desenvolvimento"])).toBe(
+      false,
+    );
+    expect(matchesArea("Desenvolvedor de Negócios", "", ["desenvolvedor"])).toBe(false);
+    // Com um termo técnico no título, a vaga continua válida.
+    expect(
+      matchesArea("Estágio em Desenvolvimento de Clientes com Java", "", [
+        "desenvolvimento",
+        "java",
+      ]),
+    ).toBe(true);
+  });
+
   it("não confunde REST com restaurantes", () => {
     expect(matchesArea("Auxiliar administrativo", "Parceria com restaurantes.", ["rest"])).toBe(
       false,

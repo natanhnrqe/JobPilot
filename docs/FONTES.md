@@ -7,7 +7,7 @@
 > resposta, dos campos efetivamente presentes e das condições de uso publicadas. Datas de verificação:
 > Remotive em **2026-11-03**; Remote OK em **2026-11-04** (com reconferência de parâmetros e tags);
 > Nube e GitHub Issues em **2026-11-10**; RapidAPI/JSearch em **2026-11-10** (consulta) e
-> **2026-11-13** (execução real pelo pipeline).
+> **2026-11-13** (execução real pelo pipeline); RapidAPI/LinkedIn Jobs em **2026-11-14**.
 
 ## Resumo
 
@@ -18,6 +18,7 @@
 | Nube                           | ✅ implementada     | API pública (GET)          | 2026-11-10    |
 | GitHub Issues                  | ❌ não implementada | API pública (GET)          | 2026-11-10    |
 | RapidAPI (JSearch)             | ✅ implementada     | API de terceiro (chave)    | 2026-11-10    |
+| RapidAPI (LinkedIn Jobs)       | ✅ implementada     | API de terceiro (chave)    | 2026-11-14    |
 | Arbeitnow                      | ❌ não implementada | API pública (GET)          | 2026-11-03    |
 | Hacker News (Algolia)          | ❌ não implementada | API pública (GET)          | 2026-11-03    |
 
@@ -245,6 +246,47 @@
   mapeamento, empresa/local/modalidade, deduplicação entre consultas, `maxJobs`, aborto, ausência de
   chave, 429 e recusa de chave com CR/LF. Também há 3 testes de cabeçalhos em `safeFetch.test.ts` e
   3 de configuração em `config.test.ts`.
+
+## RapidAPI (LinkedIn Jobs) — implementada (`backend/src/connectors/linkedinJobs.ts`)
+
+- **Plano detalhado:** [`docs/RAPIDAPI.md`](RAPIDAPI.md).
+- **Acesso:** `GET https://linkedin-job-search-api.p.rapidapi.com/active-jb`, com os cabeçalhos
+  `X-RapidAPI-Key` (a mesma chave do RapidAPI, só no `.env` gitignored) e `X-RapidAPI-Host`.
+  O host fica em `LINKEDIN_API_HOST`; sem ele, a fonte fica desligada.
+- **Status:** conector implementado em **2026-11-14**, com `supportState: "verified"` após validação
+  real do formato e do mapeamento. Nenhuma chave, requisição ou payload real está versionado.
+- **Verificação real em 2026-11-14:**
+  - `GET /active-jb?time_frame=7d&limit=5&offset=0&description_format=text&title="estágio" OR "estagiário"&location="Curitiba"`
+    → **HTTP 200**, array de vagas (não `{ data: ... }`), 2,8 s;
+  - consulta remota: `location="Brazil"` + `ai_work_arrangement=Remote OK,Remote Solely` → **HTTP 200**;
+  - **10 de 10** vagas validadas eram estágio; campos presentes: `id`, `title`, `organization`, `url`,
+    `locations_derived`, `location_type`, `employment_type`, `seniority`, `date_posted`,
+    `description_text`, `salary`, `ai_work_arrangement`, entre outros;
+  - **cota do plano gratuito (Basic): 25 requisições e 250 vagas por mês** — muito menor que a do
+    JSearch. Cada vaga devolvida consome a cota de vagas, mesmo que seja filtrada depois.
+- **Consultas e consumo:** duas consultas por execução (`"Curitiba"` e `"Brazil"` remoto), `limit=20`,
+  `time_frame=7d`. O cache fica em `data/cache/linkedin-jobs.json` com TTL de **6 dias**, então uma
+  coleta diária só chama a API **uma vez por semana**: ~8 requisições e até ~170 vagas/mês.
+- **Campos usados pelo conector:** `id`/`linkedin_id` (→ `external_id`), `url` (→ `source_url`),
+  `title`, `organization`, `locations_derived` (→ localização), `ai_work_arrangement` +
+  `location_type` (→ `workMode`), `seniority` + título + `employment_type` (→ `contractType`),
+  `salary` textual (→ salário), `description_text` (→ texto puro), `date_posted` (→ `postedAt`).
+- **Limitações conhecidas:**
+  - **não é API oficial:** é raspagem de terceiros, com risco de termos, mudança de formato e
+    cobrança após a cota;
+  - a cota gratuita é pequena (25/250 por mês): não usar coleta diária sem o cache semanal;
+  - `employment_type` pode vir `FULL_TIME` mesmo em estágio; o tipo é resolvido por `seniority`
+    (“Estágio”) e pelo título;
+  - `ai_salary_*` é estimativa de IA e **não** vira salário; só `salary` textual é usado;
+  - `date_posted` vem sem fuso; o conector trata como UTC e nunca inventa data;
+  - links abrem a vaga no LinkedIn; o envio continua humano.
+- **Condições de uso:** a chave fica apenas no `.env` local e é enviada só no header; não aparece em
+  logs, mensagens de erro ou `payload_json`. O conector não contorna login, CAPTCHA ou bloqueio; se a
+  API responder 401/403/429, a fonte falha isolada (`search_runs.status='partial'`).
+- **Cobertura de testes:** `backend/tests/unit/linkedinJobs.test.ts` — **17 testes offline** cobrindo
+  verificação, cache em memória e em arquivo, expiração, corrupção, cabeçalhos, parâmetros da cota,
+  mapeamento, `TELECOMMUTE`, deduplicação, `maxJobs`, aborto, ausência de chave, 429, formato inválido
+  e CR/LF. Também há 3 testes de configuração em `config.test.ts`.
 
 ## Regras que valem para qualquer fonte
 
