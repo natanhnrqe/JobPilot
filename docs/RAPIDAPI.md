@@ -150,7 +150,7 @@ Regras: não inventar empresa, salário ou data; vagas sem URL ou título são d
 - [x] A cobertura foi comparada com a Nube: 19 estágios (9 em Curitiba, 10 remotos) em 2026-11-13.
 - [x] O conector foi implementado com testes offline e `supportState: "unverified"` no primeiro momento.
 - [x] A execução real pelo pipeline passou (4/4 fontes ok) e o estado virou `"verified"`.
-- [ ] Você confirmou que leu e aceita os termos de uso do provedor e dos portais de origem.
+- [x] **Aceite registrado em 2026-11-14:** você declarou que leu e aceita os termos de uso do RapidAPI, do provedor e dos portais de origem, para **leitura de vagas públicas de estágio**. O envio continua manual.
 
 ## O que está pronto
 
@@ -163,7 +163,6 @@ Regras: não inventar empresa, salário ou data; vagas sem URL ou título são d
 
 ## O que falta
 
-- Sua confirmação sobre os termos de uso do provedor e dos portais de origem.
 - Monitorar a cota mensal (200) e decidir se a fonte continua valendo a pena.
 - Reavaliar a cobertura de vagas híbridas (a fonte só informa remoto/sem remoto).
 
@@ -248,5 +247,5 @@ readonly timeoutMs = 45_000;
 - [x] Formato, campos e cota registrados nesta página.
 - [x] Conector implementado com cache semanal e testes offline.
 - [x] Validação real do mapeamento com `limit=5` (10 vagas, todas estágio).
-- [ ] Sua confirmação sobre os termos de uso do provedor e do LinkedIn.
+- [x] **Aceite registrado em 2026-11-14:** você declarou que leu e aceita os termos de uso do RapidAPI, do provedor Fantastic Jobs e do LinkedIn para **leitura de vagas públicas de estágio**. O envio continua manual.
 - [ ] Monitorar a cota (25 requisições / 250 vagas por mês); não usar coleta diária sem o cache.

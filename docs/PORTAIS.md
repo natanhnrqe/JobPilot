@@ -61,12 +61,16 @@ O kit é somente leitura e **não consome IA** (não gasta orçamento).
 ## Coleta continua separada
 
 A coleta diária das 18:00 segue com as fontes verificadas **Remotive**,
-**Remote OK**, **Nube** e **JSearch/RapidAPI** (`docs/FONTES.md`). A Nube e o
-JSearch são usados apenas para ler vagas públicas de estágio; não há login,
-candidatura ou scraping das áreas de gestor. O JSearch exige chave própria no
-`.env` e tem cota gratuita de 200 consultas/mês. Incluir um novo portal de
-coleta exige verificar termos, robots/limites e registrar a evidência antes de
-habilitar.
+**Remote OK**, **Nube**, **JSearch/RapidAPI** e **LinkedIn Jobs/RapidAPI**
+(`docs/FONTES.md`). Nube, JSearch e LinkedIn Jobs são usados apenas para ler
+vagas públicas de estágio; não há login, candidatura ou scraping das áreas de
+gestor. O JSearch exige chave própria no `.env` (cota gratuita de 200
+consultas/mês); o LinkedIn Jobs usa a mesma chave e um cache semanal para caber
+na cota de 25 requisições/250 vagas por mês. **Aceite registrado em
+2026-11-14:** você declarou que leu e aceita os termos de uso do RapidAPI, dos
+provedores e do LinkedIn para leitura de vagas públicas de estágio. Incluir um
+novo portal de coleta exige verificar termos, robots/limites e registrar a
+evidência antes de habilitar.
 
 ## Próximos passos da Fase 4
 

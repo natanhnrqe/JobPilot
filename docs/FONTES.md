@@ -283,6 +283,8 @@
 - **Condições de uso:** a chave fica apenas no `.env` local e é enviada só no header; não aparece em
   logs, mensagens de erro ou `payload_json`. O conector não contorna login, CAPTCHA ou bloqueio; se a
   API responder 401/403/429, a fonte falha isolada (`search_runs.status='partial'`).
+  **Aceite do usuário registrado em 2026-11-14** (termos do RapidAPI, do provedor e do LinkedIn, para
+  leitura de vagas públicas de estágio); o envio de candidatura continua manual.
 - **Cobertura de testes:** `backend/tests/unit/linkedinJobs.test.ts` — **17 testes offline** cobrindo
   verificação, cache em memória e em arquivo, expiração, corrupção, cabeçalhos, parâmetros da cota,
   mapeamento, `TELECOMMUTE`, deduplicação, `maxJobs`, aborto, ausência de chave, 429, formato inválido
