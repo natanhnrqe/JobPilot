@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 import { makeTestServer, type AppServer } from "../helpers.js";
+import { MAX_AREA_KEYWORDS } from "../../src/domain/areaFilter.js";
 
 /**
  * Preferências de busca (migração 004) — API local, banco temporário.
@@ -127,10 +128,12 @@ describe("API de preferências de busca", () => {
     expect(res.body.areaKeywords).toEqual(["backend"]);
   });
 
-  it("rejeita mais de 20 palavras-chave com 400", async () => {
+  it(`rejeita mais de ${MAX_AREA_KEYWORDS} palavras-chave com 400`, async () => {
     const res = await request(server.app)
       .put("/api/v1/preferences")
-      .send({ areaKeywords: Array.from({ length: 21 }, (_, i) => `area-${i}`) });
+      .send({
+        areaKeywords: Array.from({ length: MAX_AREA_KEYWORDS + 1 }, (_, i) => `area-${i}`),
+      });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("VALIDATION_ERROR");

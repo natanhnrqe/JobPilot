@@ -130,6 +130,31 @@ describe("filtro por área — correspondência", () => {
     expect(matchesArea("Estágio em Suporte Técnico", "", ["suporte técnico"])).toBe(true);
   });
 
+  it("aceita os termos ampliados de tecnologia no título", () => {
+    expect(matchesArea("Estágio em Dados", "", ["dados"])).toBe(true);
+    expect(matchesArea("Estágio em Data Science", "", ["data"])).toBe(true);
+    expect(matchesArea("Estágio em QA", "", ["qa"])).toBe(true);
+    expect(matchesArea("Estágio em Infraestrutura", "", ["infraestrutura"])).toBe(true);
+    expect(matchesArea("Estágio em DevOps", "", ["devops"])).toBe(true);
+    expect(matchesArea("Estágio em Cloud", "", ["cloud"])).toBe(true);
+    expect(matchesArea("Estágio em Segurança da Informação", "", ["segurança da informação"])).toBe(
+      true,
+    );
+    expect(
+      matchesArea("Estágio em Análise e Desenvolvimento de Sistemas", "", [
+        "análise e desenvolvimento de sistemas",
+      ]),
+    ).toBe(true);
+    expect(matchesArea("Estágio em Machine Learning", "", ["machine learning"])).toBe(true);
+    expect(matchesArea("Estágio em Android", "", ["android"])).toBe(true);
+  });
+
+  it("termos ampliados não aprovam vaga de outra área", () => {
+    expect(matchesArea("Estágio em Direito", "Elaboração de contratos.", ["dados"])).toBe(false);
+    expect(matchesArea("Estágio em Logística", "Rotinas de estoque.", ["qa"])).toBe(false);
+    expect(matchesArea("Estágio em Marketing", "Campanhas de mídia.", ["data"])).toBe(false);
+  });
+
   it("não usa 'ai' da descrição (interjeição) para aprovar vaga", () => {
     expect(matchesArea("Estágio em Marketing", "Ai de você se perder o prazo.", ["ai"])).toBe(
       false,

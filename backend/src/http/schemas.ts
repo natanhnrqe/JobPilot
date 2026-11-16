@@ -2,6 +2,7 @@ import { z } from "zod";
 import { paginationQuery } from "./middleware/http.js";
 import { CONTRACT_TYPES as BASE_CONTRACT_TYPES } from "../domain/contractType.js";
 import { PROFILE_WORK_MODES, SKILL_LEVELS } from "../domain/profile.js";
+import { MAX_AREA_KEYWORD_LENGTH, MAX_AREA_KEYWORDS } from "../domain/areaFilter.js";
 
 export const WORK_MODES = ["remote", "hybrid", "onsite", "unknown"] as const;
 export const CONTRACT_TYPES = [...BASE_CONTRACT_TYPES, "unknown"] as const;
@@ -118,7 +119,10 @@ export const preferencesSchema = z
     contractTypes: z.array(z.enum(BASE_CONTRACT_TYPES)).max(BASE_CONTRACT_TYPES.length).optional(),
     includeUnknownContractType: z.boolean().optional(),
     /** Vazio = não filtra por área. */
-    areaKeywords: z.array(z.string().trim().min(1).max(50)).max(20).optional(),
+    areaKeywords: z
+      .array(z.string().trim().min(1).max(MAX_AREA_KEYWORD_LENGTH))
+      .max(MAX_AREA_KEYWORDS)
+      .optional(),
   })
   .refine(
     (data) =>

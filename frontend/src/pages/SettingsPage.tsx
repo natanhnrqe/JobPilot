@@ -242,13 +242,14 @@ export default function SettingsPage() {
             value={areaKeywordsText}
             onChange={(e) => setAreaKeywordsText(e.target.value)}
             rows={5}
-            placeholder={"desenvolvimento\nbackend\njava\nreact\ntypescript"}
+            placeholder={"desenvolvimento\nbackend\ndados\nqa\ninfraestrutura"}
           />
         </label>
         <p className="muted small">
           A vaga entra na coleta se o título ou a descrição contiver alguma palavra-chave. A
           comparação ignora acentos e maiúsculas (“Front-end” = “frontend”). Deixe vazio para não
-          filtrar por área. Exemplos: desenvolvimento, backend, java, react, dados.
+          filtrar por área. Exemplos: desenvolvimento, backend, dados, qa, infraestrutura, segurança
+          da informação. Até 40 termos; a vaga não precisa combinar com as habilidades do perfil.
         </p>
         <button onClick={savePreferences} disabled={busy}>
           Salvar preferências

@@ -13,7 +13,7 @@
  * “front end” e “frontend” são equivalentes. Lista vazia = sem filtro.
  */
 
-export const MAX_AREA_KEYWORDS = 20;
+export const MAX_AREA_KEYWORDS = 40;
 export const MAX_AREA_KEYWORD_LENGTH = 50;
 
 /**
