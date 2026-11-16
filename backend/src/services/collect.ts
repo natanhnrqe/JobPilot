@@ -45,6 +45,7 @@ import {
 import { normalizePostedAt } from "../ai/schemas.js";
 import { getSearchPreferences, type SearchPreferences } from "../repositories/preferences.js";
 import { matchesArea } from "../domain/areaFilter.js";
+import { hostnameOf, isBlockedSourceUrl } from "../domain/sourceDomains.js";
 import { createJob } from "./jobs.js";
 import { acquireLock } from "./lock.js";
 
@@ -477,6 +478,21 @@ function persistRawJob(
       meta: { fonte: sourceId },
     });
     return "invalid";
+  }
+
+  // Domínios de agregadores de baixa qualidade (ex.: empresa mascarada) não
+  // entram no banco: a vaga é contada como filtrada e o host fica no log.
+  if (isBlockedSourceUrl(sourceUrl)) {
+    const host = hostnameOf(sourceUrl);
+    insertExecutionLog(db, {
+      runId,
+      jobType: "collect",
+      level: "warn",
+      step: "persist",
+      message: `Vaga ignorada: domínio de agregador bloqueado (${host ?? "desconhecido"}).`,
+      meta: { fonte: sourceId, dominio: host },
+    });
+    return "filtered";
   }
 
   // Filtro de preferências antes de qualquer gravação: a vaga que não interessa

@@ -610,6 +610,31 @@ describe("Execução de coleta — preferências de busca", () => {
     expect(titles).toEqual(["Estágio em Desenvolvimento", "Estágio em Tecnologia"]);
   });
 
+  it("descarta vaga de domínio de agregador bloqueado antes de gravar", async () => {
+    const connector = fakeConnector({
+      key: "fonte-a",
+      jobs: [
+        rawJob("Estágio em TI", "https://us.remotejobs.dedyn.io/job/1", { externalId: "a-1" }),
+        rawJob("Estágio em TI", "https://fonte-a.example.com/vagas/2", { externalId: "a-2" }),
+      ],
+    });
+
+    const result = await runCollect(server.ctx, { connectors: [connector], trigger: "manual" });
+
+    expect(result.created).toBe(1);
+    expect(result.filtered).toBe(1);
+    const urls = db()
+      .all<{ source_url: string }>("SELECT source_url FROM jobs")
+      .map((row) => row.source_url);
+    expect(urls).toEqual(["https://fonte-a.example.com/vagas/2"]);
+
+    const logs = db().all<{ message: string }>(
+      "SELECT message FROM execution_logs WHERE run_id = ?",
+      [result.runId],
+    );
+    expect(logs.some((log) => log.message.includes("domínio de agregador bloqueado"))).toBe(true);
+  });
+
   it("áreas vazias não filtram (comportamento anterior preservado)", async () => {
     setSearchPreferences(db(), {
       contractTypes: ["internship"],

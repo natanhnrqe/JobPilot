@@ -303,3 +303,8 @@
 5. **Respeitar limites:** cache de 15 min, timeout padrão de 30 s por fonte (fontes com paginação
    pesada ou duas consultas podem declarar `timeoutMs` próprio: Nube 120 s, JSearch 45 s) e falha de
    uma fonte **nunca** aborta as demais.
+6. **Domínios bloqueados:** URLs de agregadores de baixa qualidade (empresa mascarada, sem data ou
+   local) não entram no banco. A lista fica em `backend/src/domain/sourceDomains.ts` (hoje:
+   `dedyn.io`, incluindo subdomínios); o bloqueio é por sufixo, a vaga conta como **filtrada** e o
+   host fica registrado em `execution_logs`. Novos domínios exigem evidência (vaga de exemplo) e
+   teste em `backend/tests/unit/sourceDomains.test.ts`.
