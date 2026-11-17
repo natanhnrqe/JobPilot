@@ -61,8 +61,8 @@ O kit é somente leitura e **não consome IA** (não gasta orçamento).
 ## Coleta continua separada
 
 A coleta diária das 18:00 segue com as fontes verificadas **Remotive**,
-**Remote OK**, **Nube**, **JSearch/RapidAPI** e **LinkedIn Jobs/RapidAPI**
-(`docs/FONTES.md`). Nube, JSearch e LinkedIn Jobs são usados apenas para ler
+**Remote OK**, **Nube**, **Gupy**, **JSearch/RapidAPI** e **LinkedIn Jobs/RapidAPI**
+(`docs/FONTES.md`). Nube, Gupy, JSearch e LinkedIn Jobs são usados apenas para ler
 vagas públicas de estágio; não há login, candidatura ou scraping das áreas de
 gestor. O JSearch exige chave própria no `.env` (cota gratuita de 200
 consultas/mês); o LinkedIn Jobs usa a mesma chave e um cache semanal para caber

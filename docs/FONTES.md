@@ -7,7 +7,8 @@
 > resposta, dos campos efetivamente presentes e das condições de uso publicadas. Datas de verificação:
 > Remotive em **2026-11-03**; Remote OK em **2026-11-04** (com reconferência de parâmetros e tags);
 > Nube e GitHub Issues em **2026-11-10**; RapidAPI/JSearch em **2026-11-10** (consulta) e
-> **2026-11-13** (execução real pelo pipeline); RapidAPI/LinkedIn Jobs em **2026-11-14**.
+> **2026-11-13** (execução real pelo pipeline); RapidAPI/LinkedIn Jobs em **2026-11-14**;
+> Gupy em **2026-11-16**.
 
 ## Resumo
 
@@ -16,6 +17,7 @@
 | Remotive                       | ✅ implementada     | API pública (GET)          | 2026-11-03    |
 | Remote OK                      | ✅ implementada     | API pública (GET)          | 2026-11-04    |
 | Nube                           | ✅ implementada     | API pública (GET)          | 2026-11-10    |
+| Gupy (portal da empresa)       | ✅ implementada     | API pública (GET)          | 2026-11-16    |
 | GitHub Issues                  | ❌ não implementada | API pública (GET)          | 2026-11-10    |
 | RapidAPI (JSearch)             | ✅ implementada     | API de terceiro (chave)    | 2026-11-10    |
 | RapidAPI (LinkedIn Jobs)       | ✅ implementada     | API de terceiro (chave)    | 2026-11-14    |
@@ -176,6 +178,50 @@
   mapeamento de campos, empresa real vs. agente, modalidade, filtro Curitiba/remoto, descarte de
   vencidas, `maxJobs`, aborto, falha de detalhe (fallback) e falha de página posterior.
 
+## Gupy — implementada (`backend/src/connectors/gupy.ts`)
+
+- **Por que esta fonte:** a Gupy hospeda a **página de carreiras da própria empresa** (portal
+  `*.gupy.io`). A vaga nasce ali e costuma chegar aos agregadores depois — é o marco “portal da
+  empresa” do projeto. O conector lê apenas a listagem pública; não faz login nem candidatura.
+- **Acesso:** API pública do próprio portal, sem chave e sem login.
+  - `GET https://portal.gupy.io/api/job-search/jobs?jobName=estágio&limit=100&offset=0`
+  - filtros no servidor: `jobName` (busca no título), `city`, `state` e `workplaceType`
+    (`remote`/`hybrid`/`on-site`).
+- **Formato:** `{ data: [...], pagination: { total, limit, offset } }`.
+- **Campos efetivamente presentes:** `id`, `name`, `description` (texto/HTML), `careerPageName`
+  (empresa), `careerPageUrl`, `type`, `publishedDate`, `workplaceType`, `city`, `state`, `jobUrl`,
+  `applicationDeadline`, `disabilities`, `badges`.
+- **Campos usados pelo conector:** `id` (→ `external_id`), `jobUrl` (→ `source_url`), `name`
+  (→ título), `careerPageName` (→ empresa), `city`/`state` (→ localização), `workplaceType`
+  (→ modalidade), `type` (→ tipo de contrato), `publishedDate` (→ `posted_at`) e `description`
+  (→ texto puro).
+- **Tipo de contrato:** só `vacancy_type_internship` vira `contractType: "internship"`;
+  `vacancy_type_talent_pool` (banco de talentos) e `vacancy_type_apprentice` (aprendiz) são
+  descartados — não são vaga de estágio aberta.
+- **Cobertura real em 2026-11-16:** busca por `estágio` retornou **24 vagas em Curitiba**,
+  **28 remotas** e **1.593 no Brasil**. A validação do conector (`maxJobs=15`) leu as 24 de
+  Curitiba e aceitou 15, com empresa, local, modalidade, data e URL corretos.
+- **Escopo:** duas consultas por execução — `estágio` em **Curitiba** e `estágio` com
+  `workplaceType=remote` (Brasil). A área e o tipo de contrato continuam sendo filtrados pelo
+  serviço de coleta (`matchesArea` + preferências). A página de 100 cobre o recorte em uma página;
+  o conector tem teto de 5 páginas por consulta e `timeoutMs = 45_000`.
+- **Limitações conhecidas:**
+  - o filtro `city` é por nome exato; a Grande Curitiba não é coberta pela consulta (as demais
+    fontes também usam o recorte Curitiba/remoto);
+  - `jobUrl` aponta para a página da vaga no portal da empresa, não para o formulário direto;
+  - a descrição pode vir vazia em algumas vagas — nesse caso fica indefinida, sem texto inventado;
+  - `publishedDate` é ISO com fuso; data inválida fica indefinida (nunca usamos a data atual).
+- **Condições de uso:** endpoint público consumido pela própria busca do portal; sem chave, sem
+  login, sem CAPTCHA e sem candidatura. Mitigações: User-Agent identificável, uma execução por vez,
+  página de 100 e teto de páginas, link de volta para a página da vaga.
+- **Verificação:** `verify()` ok e `fetch()` real em 2026-11-16; 24 vagas recebidas em Curitiba,
+  15 aceitas no teste com `maxJobs=15`, mapeamento conferido (empresa, local, modalidade, data,
+  URL). Nenhuma vaga foi gravada no banco durante a verificação.
+- **Cobertura de testes:** `backend/tests/unit/gupy.test.ts` — **12 testes offline** com servidor
+  local e payload fixo, cobrindo verificação, consultas Curitiba + remoto, paginação, deduplicação,
+  descarte de banco de talentos/vaga sem link, `maxJobs`, aborto, mapeamento de campos, modalidade,
+  data ausente, 429 e formato inválido.
+
 ## GitHub Issues — verificada, não implementada
 
 - **Acesso:** API pública de busca do GitHub (`/search/issues`), sem chave para leitura.
@@ -301,8 +347,8 @@
 4. **User-Agent identificável:** `JobPilot/0.1 (local; contato: usuario-local)` — trocar o contato
    pelo seu e-mail antes de uso em volume.
 5. **Respeitar limites:** cache de 15 min, timeout padrão de 30 s por fonte (fontes com paginação
-   pesada ou duas consultas podem declarar `timeoutMs` próprio: Nube 120 s, JSearch 45 s) e falha de
-   uma fonte **nunca** aborta as demais.
+   pesada ou duas consultas podem declarar `timeoutMs` próprio: Nube 120 s, JSearch 45 s, Gupy
+   45 s) e falha de uma fonte **nunca** aborta as demais.
 6. **Domínios bloqueados:** URLs de agregadores de baixa qualidade (empresa mascarada, sem data ou
    local) não entram no banco. A lista fica em `backend/src/domain/sourceDomains.ts` (hoje:
    `dedyn.io`, incluindo subdomínios); o bloqueio é por sufixo, a vaga conta como **filtrada** e o

@@ -17,6 +17,7 @@ import { runCollect, type CollectTrigger } from "../services/collect.js";
 import { RemotiveConnector } from "../connectors/remotive.js";
 import { RemoteOkConnector } from "../connectors/remoteok.js";
 import { NubeConnector } from "../connectors/nube.js";
+import { GupyConnector } from "../connectors/gupy.js";
 import { JSearchConnector } from "../connectors/rapidapiJsearch.js";
 import { LinkedInJobsConnector } from "../connectors/linkedinJobs.js";
 import type { SourceConnector } from "../connectors/types.js";
@@ -49,6 +50,7 @@ function defaultConnectors(config: AppConfig): SourceConnector[] {
     new RemotiveConnector(),
     new RemoteOkConnector(),
     new NubeConnector(),
+    new GupyConnector(),
   ];
   if (config.rapidapi) {
     connectors.push(

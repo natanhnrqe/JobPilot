@@ -1,8 +1,8 @@
 # JobPilot — Especificação Técnica v1.1
 
-**Status:** Fases 1–5 implementadas e Fase 6 em andamento (Nube, JSearch, LinkedIn Jobs e filtro por área; atualizado em 2026-11-14). O envio automatizado nos portais permanece **fora de escopo** por decisão registrada em `docs/PORTAIS.md`.
+**Status:** Fases 1–5 implementadas e Fase 6 em andamento (Nube, Gupy, JSearch, LinkedIn Jobs e filtro por área; atualizado em 2026-11-16). O envio automatizado nos portais permanece **fora de escopo** por decisão registrada em `docs/PORTAIS.md`.
 **Relação com o escopo:** detalha tecnicamente o `docs/ESCOPO.md` v1.1. Não substitui o escopo; quando divergirem, o escopo prevalece em requisitos funcionais.
-**Marco atual:** Fases 6.1 e 6.2 concluídas — conector Nube (estágios em Curitiba/Grande Curitiba e home office) e conector JSearch/RapidAPI (estágios em Curitiba e remotos), ambos com cache e validação real pelo pipeline. O conector LinkedIn Jobs (6.6) também está implementado e validado em 2026-11-14, com cache semanal para respeitar a cota gratuita de 25 requisições/250 vagas por mês. O filtro por área (6.5) está implementado: a coleta só grava vagas cujo título contém uma palavra-chave da área ou cuja descrição cita uma tecnologia específica. As fases 1–5 (fundação, coleta, IA, candidatura assistida, lembretes e consolidação) estão implementadas e cobertas por testes. Adzuna e Jooble continuam pendentes de chave.
+**Marco atual:** Fases 6.1 e 6.2 concluídas — conector Nube (estágios em Curitiba/Grande Curitiba e home office) e conector JSearch/RapidAPI (estágios em Curitiba e remotos), ambos com cache e validação real pelo pipeline. O conector LinkedIn Jobs (6.6) também está implementado e validado em 2026-11-14, com cache semanal para respeitar a cota gratuita de 25 requisições/250 vagas por mês. O conector Gupy (6.7) está implementado e validado em 2026-11-16: lê a listagem pública do portal de carreiras das empresas (Curitiba + remoto), sem chave e sem candidatura. O filtro por área (6.5) está implementado: a coleta só grava vagas cujo título contém uma palavra-chave da área ou cuja descrição cita uma tecnologia específica. As fases 1–5 (fundação, coleta, IA, candidatura assistida, lembretes e consolidação) estão implementadas e cobertas por testes. Adzuna e Jooble continuam pendentes de chave.
 
 ## 1. Princípios e decisões estruturais
 
@@ -668,6 +668,7 @@ Priorizar **APIs públicas e estáveis** antes de scraping. Verificar cada uma e
 | Remotive API                                        | API          | alta                   | JSON público, sem auth; boa para remoto                          |
 | RemoteOK API                                        | API          | alta                   | JSON público; respeitar rate limit                               |
 | Nube                                                | API          | alta (Brasil)          | JSON público sem chave; estágios em Curitiba/remoto; empresa oculta |
+| Gupy (portal da empresa)                            | API          | alta (Brasil)          | JSON público sem chave; página de carreiras da empresa; Curitiba + remoto |
 | Arbeitnow API                                       | API          | média-alta             | JSON público                                                     |
 | GitHub Issues (frontendbr/backend-br)               | API          | baixa                  | 0 estágio aberto em 2026-11-10; markdown livre                    |
 | Hacker News (Who is hiring / Algolia HN API)        | API          | média                  | textinho; exige parse; bom para júnior                           |
@@ -676,13 +677,13 @@ Priorizar **APIs públicas e estáveis** antes de scraping. Verificar cada uma e
 | RapidAPI (JSearch)                                  | API de terceiro | alta (validada)     | implementada na Fase 6.2; chave própria, cota de 200/mês; ToS pendente |
 | Portais de ATS (Greenhouse, Lever, Ashby, Workable) | API/HTML     | média-alta             | têm endpoints públicos de vagas por empresa; bons para automação |
 
-**Regra:** um conector só recebe `support_state='verified'` após (a) `verify()` ok, (b) uma execução real bem-sucedida, (c) registro em `docs/FONTES.md`. Portais de ATS entram na Fase 4 como alvo de automação, não de coleta em massa.
+**Regra:** um conector só recebe `support_state='verified'` após (a) `verify()` ok, (b) uma execução real bem-sucedida, (c) registro em `docs/FONTES.md`. Ler a listagem pública de um portal de ATS/empresa é coleta legítima (Gupy é o caso implementado); o que continua fora de escopo é automatizar login ou candidatura nesses portais (Fase 4).
 
 ### 6.4 Políticas de coleta
 
 - `User-Agent` identificável + identificação no README; `robots.txt` respeitado quando aplicável.
 - Rate limit por fonte (mínimo 1 req/s, backoff exponencial em 429).
-- Timeout por fonte (default 30 s; a fonte pode declarar `timeoutMs` próprio — a Nube usa 120 s por causa da paginação e o JSearch 45 s por causa das duas consultas); falha em uma fonte **não** aborta as demais → `search_runs.status='partial'`.
+- Timeout por fonte (default 30 s; a fonte pode declarar `timeoutMs` próprio — a Nube usa 120 s por causa da paginação, o JSearch e a Gupy 45 s por causa das duas consultas); falha em uma fonte **não** aborta as demais → `search_runs.status='partial'`.
 - Cache de página/JSON por 15 min para evitar rebuscas repetidas.
 - Nenhuma fonte pode gerar mais de `MAX_JOBS_PER_RUN` (default 200) vagas por execução.
 
@@ -1070,6 +1071,7 @@ Regras (válidas desde o Marco 1):
 | 6.4    | GitHub Issues                               | verificado em 2026-11-10: 0 estágio aberto; não implementar enquanto o volume for irrelevante      |
 | 6.5 ✅ | Filtro por área na coleta                   | `search_preferences.area_keywords` (migração 011) editável em Configurações, até 40 termos; título aceita qualquer palavra-chave, descrição só tecnologias específicas; lista vazia = sem filtro; **não compara com skills/CV do perfil**; 19 testes unitários + integração de coleta/API |
 | 6.6 ✅ | Conector LinkedIn Jobs (RapidAPI)           | `/active-jb` validado em 2026-11-14 (Curitiba + Brasil remoto); cache em arquivo de 6 dias para a cota de 25 requisições/250 vagas por mês; 17 testes offline + 3 de config; envio continua humano |
+| 6.7 ✅ | Conector Gupy (portal da empresa)           | `portal.gupy.io/api/job-search/jobs` validado em 2026-11-16 (Curitiba + remoto); sem chave; 12 testes offline; banco de talentos/aprendiz descartados; envio continua humano |
 
 ## 13. Ordem de implementação recomendada e primeiro marco
 
