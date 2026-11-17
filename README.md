@@ -61,7 +61,7 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 
 **Não implementado** (por design, por enquanto): envio automatizado nos portais (os alvos vedam bots — ver [`docs/PORTAIS.md`](docs/PORTAIS.md)), análise em lote e Playwright.
 
-**Preparado, não implementado:** Adzuna e Jooble, que exigem chave gratuita criada pelo usuário. JSearch e LinkedIn Jobs estão implementados — veja [`docs/RAPIDAPI.md`](docs/RAPIDAPI.md).
+**Preparado, não implementado:** Adzuna e Jooble, que exigem chave gratuita criada pelo usuário. JSearch e LinkedIn Jobs estão implementados — veja [`docs/RAPIDAPI.md`](docs/RAPIDAPI.md). Os ATS Greenhouse/Lever/Ashby foram validados em 2026-11-16, mas adiados: os 13 boards conferidos não tinham estágio de tecnologia no recorte (ver [`docs/FONTES.md`](docs/FONTES.md)).
 
 ## Requisitos
 

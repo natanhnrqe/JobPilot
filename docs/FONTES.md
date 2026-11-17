@@ -222,6 +222,28 @@
   descarte de banco de talentos/vaga sem link, `maxJobs`, aborto, mapeamento de campos, modalidade,
   data ausente, 429 e formato inválido.
 
+## Greenhouse / Lever / Ashby — validados, não implementados (2026-11-16)
+
+- **Por que avaliar:** são os ATS por trás da página de carreiras de muitas empresas de tecnologia
+  (incluindo brasileiras). A vaga nasce ali antes de chegar aos agregadores, o mesmo marco da Gupy.
+- **Endpoints públicos validados (sem chave):**
+  - Greenhouse: `GET https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=false`
+  - Lever: `GET https://api.lever.co/v0/postings/{token}?mode=json`
+  - Ashby: `GET https://api.ashbyhq.com/posting-api/job-board/{token}`
+- **Boards conferidos e volume total em 2026-11-16:**
+  - Greenhouse: `stone` 346, `xpinc` 115, `quintoandar` 103, `thoughtworks` 41, `ebanx` 34,
+    `vtex` 32, `wildlifestudios` 14, `cortex` 2;
+  - Lever: `neon` 9, `starkbank` 4;
+  - Ashby: `nubank` 107, `thoughtworks` 75, `neon` 1.
+- **Resultado do recorte:** apenas **6 vagas** com “estágio/intern” no título em todos os boards
+  (xpinc 1, wildlifestudios 4, starkbank 1) e **nenhuma** de tecnologia. Ou seja, implementar os
+  conectores agora renderia **zero vagas** no recorte Curitiba/remoto + tecnologia.
+- **Decisão (2026-11-16):** o marco “portal da empresa” é fechado com a **Gupy**, que cobre milhares
+  de empresas brasileiras e já está validada. Greenhouse/Lever/Ashby ficam **adiados**: os endpoints
+  e a lista de boards estão registrados aqui para quando um deles tiver estágio de tecnologia
+  aberto ou a lista de empresas for ampliada. Nenhum conector foi implementado sem vaga real no
+  recorte.
+
 ## GitHub Issues — verificada, não implementada
 
 - **Acesso:** API pública de busca do GitHub (`/search/issues`), sem chave para leitura.
