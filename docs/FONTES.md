@@ -18,6 +18,7 @@
 | Remote OK                      | ✅ implementada     | API pública (GET)          | 2026-11-04    |
 | Nube                           | ✅ implementada     | API pública (GET)          | 2026-11-10    |
 | Gupy (portal da empresa)       | ✅ implementada     | API pública (GET)          | 2026-11-16    |
+| Himalayas                      | ✅ implementada     | API pública (GET)          | 2026-11-19    |
 | GitHub Issues                  | ❌ não implementada | API pública (GET)          | 2026-11-10    |
 | RapidAPI (JSearch)             | ✅ implementada     | API de terceiro (chave)    | 2026-11-10    |
 | RapidAPI (LinkedIn Jobs)       | ✅ implementada     | API de terceiro (chave)    | 2026-11-14    |
@@ -224,6 +225,52 @@
   descarte de banco de talentos/vaga sem link, `maxJobs`, aborto, mapeamento de campos, modalidade,
   data ausente, 429 e formato inválido.
 
+## Himalayas — implementada (`backend/src/connectors/himalayas.ts`)
+
+- **Por que esta fonte:** quadro público de vagas **remotas**, sem chave, com busca por país e
+  tipo de contrato. Complementa as fontes nacionais (Nube, Gupy) e o JSearch com vagas remotas
+  para o Brasil que não aparecem nos portais locais.
+- **Acesso:** API pública do próprio site, sem chave e sem login.
+  - `GET https://himalayas.app/jobs/api/search?employment_type=Intern&country=BR&page=N`
+  - a resposta traz `{ totalCount, limit, offset, jobs: [...] }`, com **20 vagas por página**.
+- **Campos efetivamente presentes:** `guid`, `title`, `companyName`, `companySlug`,
+  `employmentType`, `locationRestrictions`, `timezoneRestrictions`, `description` (HTML),
+  `excerpt`, `applicationLink`, `pubDate`/`expiryDate` (Unix em segundos), `minSalary`/`maxSalary`,
+  `currency`, `salaryPeriod`, `seniority`, `categories`.
+- **Campos usados pelo conector:** `guid` (→ `external_id`), `applicationLink` (→ `source_url`),
+  `title`, `companyName` (→ empresa), `locationRestrictions` (→ localização), `description` (→ texto
+  puro via `htmlToText`), `pubDate` (→ `posted_at`), salário formatado e `expiryDate` (→ descarte de
+  vaga expirada).
+- **Cobertura real em 2026-11-19:** `Intern` + `country=BR` retornou **50 estágios abertos para o
+  Brasil** em 3 páginas. No recorte havia vagas de tecnologia reais: A.I. Engineering Intern
+  (Sezzle), Full Stack Developer Intern (ASG), Intern Forward Deployed Engineer (Artefact),
+  Estagiário de Web Analytics/BI (Holos Media), Automation - Development (BTG Pactual),
+  Application Developer / Product Engineer (KIS Solutions), Desenvolvedor(a) de Software (v(dev)),
+  entre outras. `robots.txt` libera `/jobs`.
+- **Modalidade e tipo:** a fonte é **100% remota**, então `workMode` é sempre `remote`; o conector
+  mantém `contractType: "internship"` e ainda confere `employmentType` na resposta.
+- **Escopo:** uma consulta por execução (estágio, Brasil), com paginação de até 5 páginas
+  (100 vagas) e `timeoutMs = 45_000`. A área e o tipo de contrato continuam sendo filtrados pelo
+  serviço de coleta (`matchesArea` + preferências); banco de talentos é barrado pela blocklist.
+- **Limitações conhecidas:**
+  - `locationRestrictions` vazio significa vaga mundial (exibida como “Remoto”); a consulta por
+    país já inclui as vagas mundiais elegíveis para o Brasil;
+  - a lista de países de algumas vagas é longa (ex.: “Americas”), o que deixa a localização verbosa;
+  - a descrição vem em HTML — o conector converte para texto e remove scripts/estilos;
+  - `pubDate`/`expiryDate` inválidos ficam indefinidos; vaga expirada é descartada, nunca datada
+    com “agora”.
+- **Condições de uso:** manter o `applicationLink` intacto, dar **atribuição visível** ao Himalayas
+  e não repassar as vagas a outros quadros/agregadores. O JobPilot é local: mostra a vaga, o link e
+  a fonte; não republica nem envia candidatura. Sem chave a cota é menor (a chave gratuita sobe para
+  60 req/min e 10.000/dia); o conector faz 3 requisições por execução no recorte atual.
+- **Verificação:** `verify()` ok (152 ms) e `fetch()` real em 2026-11-19 — **51 vagas recebidas,
+  50 aceitas em 3 páginas**, mapeamento conferido (título, empresa, local, modalidade, salário,
+  data e URL). Nenhuma vaga foi gravada no banco durante a verificação.
+- **Cobertura de testes:** `backend/tests/unit/himalayas.test.ts` — **13 testes offline** com
+  servidor local e payload fixo, cobrindo verificação, paginação/teto, mapeamento de campos,
+  salário, data inválida, descarte de expirada, deduplicação, `maxJobs`, aborto, 429 e formato
+  inválido.
+
 ## Greenhouse / Lever / Ashby — validados, não implementados (2026-11-16)
 
 - **Por que avaliar:** são os ATS por trás da página de carreiras de muitas empresas de tecnologia
@@ -362,7 +409,7 @@
 
 ## Candidatas em avaliação — 2026-11-19
 
-> Nenhuma fonte abaixo foi implementada. O registro é o que foi lido na documentação oficial e o
+> As fontes abaixo não foram implementadas. O registro é o que foi lido na documentação oficial e o
 > que falta validar com acesso real, seguindo a regra “verificar antes de implementar”.
 
 ### Adzuna — aguardando chaves
@@ -390,9 +437,6 @@
 
 ### Fontes sem chave (avaliar depois)
 
-- **Himalayas** (`https://himalayas.app/jobs/api`): remoto, sem chave, 20 vagas/página com cursor;
-  chave gratuita sobe para 60 req/min e 10.000/dia. Exige link visível de atribuição e não permite
-  repassar as vagas a outros quadros/agregadores.
 - **Jobicy** (`https://jobicy.com/api/jobs`): remoto, sem chave, até 200/página, somente os últimos
   7 dias; atribuição obrigatória e polling no máximo 1x/hora.
 - **Workable / Recruitee / Teamtailor**: JSON público por empresa, sem chave. Exigem lista de

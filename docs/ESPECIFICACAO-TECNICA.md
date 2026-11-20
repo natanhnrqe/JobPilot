@@ -1,8 +1,8 @@
 # JobPilot — Especificação Técnica v1.1
 
-**Status:** Fases 1–5 implementadas e Fase 6 em andamento (Nube, Gupy, JSearch, LinkedIn Jobs e filtro por área; atualizado em 2026-11-16). O envio automatizado nos portais permanece **fora de escopo** por decisão registrada em `docs/PORTAIS.md`.
+**Status:** Fases 1-5 implementadas e Fase 6 em andamento (Nube, Gupy, Himalayas, JSearch, LinkedIn Jobs e filtro por área; atualizado em 2026-11-19). O envio automatizado nos portais permanece **fora de escopo** por decisão registrada em `docs/PORTAIS.md`.
 **Relação com o escopo:** detalha tecnicamente o `docs/ESCOPO.md` v1.1. Não substitui o escopo; quando divergirem, o escopo prevalece em requisitos funcionais.
-**Marco atual:** Fases 6.1 e 6.2 concluídas — conector Nube (estágios em Curitiba/Grande Curitiba e home office) e conector JSearch/RapidAPI (estágios em Curitiba e remotos), ambos com cache e validação real pelo pipeline. O conector LinkedIn Jobs (6.6) também está implementado e validado em 2026-11-14, com cache semanal para respeitar a cota gratuita de 25 requisições/250 vagas por mês. O conector Gupy (6.7) está implementado e validado em 2026-11-16: lê a listagem pública do portal de carreiras das empresas (Curitiba + remoto), sem chave e sem candidatura — com ele, o marco “portal da empresa” está fechado. Greenhouse/Lever/Ashby foram validados (6.8), mas adiados por não terem estágio de tecnologia no recorte em 2026-11-16. O filtro por área (6.5) está implementado: a coleta só grava vagas cujo título contém uma palavra-chave da área ou cuja descrição cita uma tecnologia específica. As fases 1–5 (fundação, coleta, IA, candidatura assistida, lembretes e consolidação) estão implementadas e cobertas por testes. Adzuna e Jooble continuam pendentes de chave.
+**Marco atual:** Fases 6.1 e 6.2 concluídas — conector Nube (estágios em Curitiba/Grande Curitiba e home office) e conector JSearch/RapidAPI (estágios em Curitiba e remotos), ambos com cache e validação real pelo pipeline. O conector LinkedIn Jobs (6.6) também está implementado e validado em 2026-11-14, com cache semanal para respeitar a cota gratuita de 25 requisições/250 vagas por mês. O conector Gupy (6.7) está implementado e validado em 2026-11-16: lê a listagem pública do portal de carreiras das empresas (Curitiba + remoto), sem chave e sem candidatura - com ele, o marco "portal da empresa" está fechado. O conector Himalayas (6.9) está implementado e validado em 2026-11-19: busca estágios remotos abertos para o Brasil (50 vagas em 3 páginas), sem chave, com atribuição e link original preservados. Greenhouse/Lever/Ashby foram validados (6.8), mas adiados por não terem estágio de tecnologia no recorte em 2026-11-16. O filtro por área (6.5) está implementado: a coleta só grava vagas cujo título contém uma palavra-chave da área ou cuja descrição cita uma tecnologia específica. As fases 1–5 (fundação, coleta, IA, candidatura assistida, lembretes e consolidação) estão implementadas e cobertas por testes. Adzuna e Jooble continuam pendentes de chave.
 
 ## 1. Princípios e decisões estruturais
 
@@ -669,6 +669,7 @@ Priorizar **APIs públicas e estáveis** antes de scraping. Verificar cada uma e
 | RemoteOK API                                        | API          | alta                   | JSON público; respeitar rate limit                               |
 | Nube                                                | API          | alta (Brasil)          | JSON público sem chave; estágios em Curitiba/remoto; empresa oculta |
 | Gupy (portal da empresa)                            | API          | alta (Brasil)          | JSON público sem chave; página de carreiras da empresa; Curitiba + remoto |
+| Himalayas (remoto)                                  | API          | alta (Brasil)          | JSON público sem chave; 50 estágios abertos para o Brasil; vagas remotas |
 | Arbeitnow API                                       | API          | média-alta             | JSON público                                                     |
 | GitHub Issues (frontendbr/backend-br)               | API          | baixa                  | 0 estágio aberto em 2026-11-10; markdown livre                    |
 | Hacker News (Who is hiring / Algolia HN API)        | API          | média                  | textinho; exige parse; bom para júnior                           |
@@ -683,7 +684,7 @@ Priorizar **APIs públicas e estáveis** antes de scraping. Verificar cada uma e
 
 - `User-Agent` identificável + identificação no README; `robots.txt` respeitado quando aplicável.
 - Rate limit por fonte (mínimo 1 req/s, backoff exponencial em 429).
-- Timeout por fonte (default 30 s; a fonte pode declarar `timeoutMs` próprio — a Nube usa 120 s por causa da paginação, o JSearch e a Gupy 45 s por causa das duas consultas); falha em uma fonte **não** aborta as demais → `search_runs.status='partial'`.
+- Timeout por fonte (default 30 s; a fonte pode declarar `timeoutMs` próprio — a Nube usa 120 s por causa da paginação, o JSearch, a Gupy e a Himalayas 45 s por causa das consultas/páginas); falha em uma fonte **não** aborta as demais → `search_runs.status='partial'`.
 - Cache de página/JSON por 15 min para evitar rebuscas repetidas.
 - Nenhuma fonte pode gerar mais de `MAX_JOBS_PER_RUN` (default 200) vagas por execução.
 
@@ -1073,6 +1074,7 @@ Regras (válidas desde o Marco 1):
 | 6.6 ✅ | Conector LinkedIn Jobs (RapidAPI)           | `/active-jb` validado em 2026-11-14 (Curitiba + Brasil remoto); cache em arquivo de 6 dias para a cota de 25 requisições/250 vagas por mês; 17 testes offline + 3 de config; envio continua humano |
 | 6.7 ✅ | Conector Gupy (portal da empresa)           | `portal.gupy.io/api/job-search/jobs` validado em 2026-11-16 (Curitiba + remoto); sem chave; 12 testes offline; banco de talentos/aprendiz descartados; envio continua humano |
 | 6.8 ⏸️ | ATS Greenhouse / Lever / Ashby              | endpoints e 13 boards validados em 2026-11-16; **0 estágios de tecnologia** no recorte → adiados; registrar nova avaliação quando houver vaga real |
+| 6.9 ✅ | Conector Himalayas (remoto)                 | `himalayas.app/jobs/api/search` validado em 2026-11-19: 50 estágios abertos para o Brasil (3 páginas), sem chave; 11 vagas tech no recorte; `robots.txt` libera `/jobs`; 13 testes offline; atribuição e `applicationLink` preservados |
 
 ## 13. Ordem de implementação recomendada e primeiro marco
 
