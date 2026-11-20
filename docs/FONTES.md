@@ -8,7 +8,7 @@
 > Remotive em **2026-11-03**; Remote OK em **2026-11-04** (com reconferência de parâmetros e tags);
 > Nube e GitHub Issues em **2026-11-10**; RapidAPI/JSearch em **2026-11-10** (consulta) e
 > **2026-11-13** (execução real pelo pipeline); RapidAPI/LinkedIn Jobs em **2026-11-14**;
-> Gupy em **2026-11-16**.
+> Gupy em **2026-11-16**; Adzuna/Jooble em **2026-11-19** (documentação, aguardando chaves).
 
 ## Resumo
 
@@ -21,6 +21,8 @@
 | GitHub Issues                  | ❌ não implementada | API pública (GET)          | 2026-11-10    |
 | RapidAPI (JSearch)             | ✅ implementada     | API de terceiro (chave)    | 2026-11-10    |
 | RapidAPI (LinkedIn Jobs)       | ✅ implementada     | API de terceiro (chave)    | 2026-11-14    |
+| Adzuna                         | ⏳ aguardando chave | API de terceiro (chave)    | 2026-11-19    |
+| Jooble (Brasil)                | ⏳ aguardando chave | API de terceiro (chave)    | 2026-11-19    |
 | Arbeitnow                      | ❌ não implementada | API pública (GET)          | 2026-11-03    |
 | Hacker News (Algolia)          | ❌ não implementada | API pública (GET)          | 2026-11-03    |
 
@@ -357,6 +359,55 @@
   verificação, cache em memória e em arquivo, expiração, corrupção, cabeçalhos, parâmetros da cota,
   mapeamento, `TELECOMMUTE`, deduplicação, `maxJobs`, aborto, ausência de chave, 429, formato inválido
   e CR/LF. Também há 3 testes de configuração em `config.test.ts`.
+
+## Candidatas em avaliação — 2026-11-19
+
+> Nenhuma fonte abaixo foi implementada. O registro é o que foi lido na documentação oficial e o
+> que falta validar com acesso real, seguindo a regra “verificar antes de implementar”.
+
+### Adzuna — aguardando chaves
+
+- **Acesso:** `GET https://api.adzuna.com/v1/api/jobs/{country}/search/{page}` com `app_id` e
+  `app_key` na query. Cadastro instantâneo em <https://developer.adzuna.com/> (sem cartão).
+- **Cobertura:** Brasil (`br`), entre ~20 países; a descrição volta como **snippet**, não completa.
+- **Cota gratuita:** os limites oficiais variam e aparecem na conta; fontes de terceiros em 2026
+  citam ~25 req/min, 250/dia, 1.000/semana e 2.500/mês. Atribuição obrigatória; uso comercial
+  exige licença.
+- **Uso pretendido:** estágios em Curitiba e remotos no Brasil (`what=estágio`, `where=Curitiba` e
+  uma consulta nacional/remota). Validar a cobertura real antes de implementar.
+
+### Jooble (Brasil) — aguardando chave
+
+- **Acesso:** `POST https://{host}/api/{api_key}` com corpo JSON
+  `{ keywords, location, radius, page, ResultOnPage }`. A chave é **por país**: para o Brasil,
+  criar em <https://br.jooble.org/api/about>; uma chave de `jooble.org` cobre apenas os EUA.
+- **Resposta:** `{ totalCount, jobs: [{ id, title, location, snippet, salary, source, type, link,
+  company, updated }] }`.
+- **Cota gratuita:** a documentação oficial de 2026 cita **100 requisições/dia por chave**;
+  fontes de terceiros mencionam 500 no total. Confirmar na conta.
+- **Limitações:** é um agregador; `link` aponta para a página do Jooble e a descrição é um
+  snippet. Medir qualidade e duplicidade antes de entrar no código.
+
+### Fontes sem chave (avaliar depois)
+
+- **Himalayas** (`https://himalayas.app/jobs/api`): remoto, sem chave, 20 vagas/página com cursor;
+  chave gratuita sobe para 60 req/min e 10.000/dia. Exige link visível de atribuição e não permite
+  repassar as vagas a outros quadros/agregadores.
+- **Jobicy** (`https://jobicy.com/api/jobs`): remoto, sem chave, até 200/página, somente os últimos
+  7 dias; atribuição obrigatória e polling no máximo 1x/hora.
+- **Workable / Recruitee / Teamtailor**: JSON público por empresa, sem chave. Exigem lista de
+  empresas; a Recruitee planeja exigir token em 2027. Mesma lógica dos ATS já avaliados.
+- **CIEE / Sólides / Trampos / Programathor**: portais brasileiros com vagas de estágio, mas sem
+  API pública documentada; exigem validação de `robots.txt`/termos e parsing. Não implementar sem
+  essa validação.
+
+### Descartadas ou bloqueadas
+
+- **SmartRecruiters:** o host `api.smartrecruiters.com` bloqueia `User-agent: *` no `robots.txt`
+  (permite apenas LinkedInBot) — não usar.
+- **Workday:** o endpoint CXS respondeu 429 na validação de 2026-11-16 — precisa de nova
+  validação antes de qualquer código.
+- **Catho / Indeed / Glassdoor:** sem API pública; scraping contraria os termos e há CAPTCHA.
 
 ## Regras que valem para qualquer fonte
 

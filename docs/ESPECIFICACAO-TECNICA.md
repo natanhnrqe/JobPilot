@@ -1067,7 +1067,7 @@ Regras (válidas desde o Marco 1):
 | ------ | ------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | 6.1 ✅ | Conector Nube                               | `verify()`/`fetch()` reais; 39 vagas no recorte em 2026-11-10; 16 testes offline; `docs/FONTES.md` |
 | 6.2 ✅ | Conector JSearch (RapidAPI)                 | `/search-v2` com cache e duas consultas; execução real em 2026-11-13: 4/4 fontes ok, 19 estágios (9 Curitiba, 10 remotos); 16 testes offline; cota 200/mês documentada |
-| 6.3    | Adzuna / Jooble                             | chaves gratuitas criadas pelo usuário; cobertura BR/Curitiba medida e registrada antes do código   |
+| 6.3 ⏳ | Adzuna / Jooble                             | chaves gratuitas: Adzuna é instantânea; Jooble exige chave BR em `br.jooble.org/api/about`; config preparada em 2026-11-19; cobertura BR/Curitiba será medida antes do código |
 | 6.4    | GitHub Issues                               | verificado em 2026-11-10: 0 estágio aberto; não implementar enquanto o volume for irrelevante      |
 | 6.5 ✅ | Filtro por área na coleta                   | `search_preferences.area_keywords` (migração 011) editável em Configurações, até 40 termos; título aceita qualquer palavra-chave, descrição só tecnologias específicas; lista vazia = sem filtro; **não compara com skills/CV do perfil**; 19 testes unitários + integração de coleta/API |
 | 6.6 ✅ | Conector LinkedIn Jobs (RapidAPI)           | `/active-jb` validado em 2026-11-14 (Curitiba + Brasil remoto); cache em arquivo de 6 dias para a cota de 25 requisições/250 vagas por mês; 17 testes offline + 3 de config; envio continua humano |
