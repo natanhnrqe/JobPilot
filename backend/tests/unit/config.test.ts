@@ -108,6 +108,104 @@ describe("loadConfig — RapidAPI (JSearch)", () => {
   });
 });
 
+describe("loadConfig — Adzuna", () => {
+  it("sem credenciais, adzuna é null", () => {
+    const config = loadConfig({ DATA_DIR: "ignorado-nos-testes" }, { backendDir: process.cwd() });
+
+    expect(config.adzuna).toBeNull();
+  });
+
+  it("exige app_id e app_key juntos", () => {
+    const onlyId = loadConfig(
+      { ADZUNA_APP_ID: "id-de-teste", DATA_DIR: "ignorado-nos-testes" },
+      { backendDir: process.cwd() },
+    );
+    const onlyKey = loadConfig(
+      { ADZUNA_APP_KEY: "chave-de-teste", DATA_DIR: "ignorado-nos-testes" },
+      { backendDir: process.cwd() },
+    );
+
+    expect(onlyId.adzuna).toBeNull();
+    expect(onlyKey.adzuna).toBeNull();
+  });
+
+  it("com app_id e app_key, usa o país padrão br", () => {
+    const config = loadConfig(
+      {
+        ADZUNA_APP_ID: "id-de-teste",
+        ADZUNA_APP_KEY: "chave-de-teste",
+        DATA_DIR: "ignorado-nos-testes",
+      },
+      { backendDir: process.cwd() },
+    );
+
+    expect(config.adzuna).toEqual({
+      appId: "id-de-teste",
+      appKey: "chave-de-teste",
+      country: "br",
+    });
+  });
+
+  it("respeita ADZUNA_COUNTRY e ignora valor em branco", () => {
+    const custom = loadConfig(
+      {
+        ADZUNA_APP_ID: "id-de-teste",
+        ADZUNA_APP_KEY: "chave-de-teste",
+        ADZUNA_COUNTRY: "gb",
+        DATA_DIR: "ignorado-nos-testes",
+      },
+      { backendDir: process.cwd() },
+    );
+    const blank = loadConfig(
+      {
+        ADZUNA_APP_ID: "id-de-teste",
+        ADZUNA_APP_KEY: "chave-de-teste",
+        ADZUNA_COUNTRY: "   ",
+        DATA_DIR: "ignorado-nos-testes",
+      },
+      { backendDir: process.cwd() },
+    );
+
+    expect(custom.adzuna?.country).toBe("gb");
+    expect(blank.adzuna?.country).toBe("br");
+  });
+});
+
+describe("loadConfig — Jooble", () => {
+  it("sem chave, jooble é null", () => {
+    const config = loadConfig({ DATA_DIR: "ignorado-nos-testes" }, { backendDir: process.cwd() });
+
+    expect(config.jooble).toBeNull();
+  });
+
+  it("com chave, usa o host padrão do Brasil", () => {
+    const config = loadConfig(
+      { JOOBLE_API_KEY: "chave-de-teste", DATA_DIR: "ignorado-nos-testes" },
+      { backendDir: process.cwd() },
+    );
+
+    expect(config.jooble).toEqual({ apiKey: "chave-de-teste", host: "br.jooble.org" });
+  });
+
+  it("respeita JOOBLE_API_HOST e ignora chave em branco", () => {
+    const custom = loadConfig(
+      {
+        JOOBLE_API_KEY: "chave-de-teste",
+        JOOBLE_API_HOST: "uk.jooble.org",
+        DATA_DIR: "ignorado-nos-testes",
+      },
+      { backendDir: process.cwd() },
+    );
+    const blank = loadConfig(
+      { JOOBLE_API_KEY: "   ", DATA_DIR: "ignorado-nos-testes" },
+      { backendDir: process.cwd() },
+    );
+
+    expect(custom.jooble?.host).toBe("uk.jooble.org");
+    expect(blank.jooble).toBeNull();
+  });
+});
+
 describe("loadConfig — LinkedIn Jobs (RapidAPI)", () => {
   it("sem LINKEDIN_API_HOST, linkedinApiHost é null", () => {
     const config = loadConfig({ DATA_DIR: "ignorado-nos-testes" }, { backendDir: process.cwd() });

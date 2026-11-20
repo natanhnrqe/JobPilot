@@ -21,6 +21,13 @@ const EnvSchema = z.object({
   RAPIDAPI_HOST: z.string().default("jsearch.p.rapidapi.com"),
   // Host do LinkedIn Job Search API; presente = fonte habilitada (com a chave acima).
   LINKEDIN_API_HOST: z.string().optional(),
+  // Adzuna (opcional — sem app_id/app_key, a fonte fica desligada).
+  ADZUNA_APP_ID: z.string().optional(),
+  ADZUNA_APP_KEY: z.string().optional(),
+  ADZUNA_COUNTRY: z.string().default("br"),
+  // Jooble (opcional — a chave é específica do domínio/país).
+  JOOBLE_API_KEY: z.string().optional(),
+  JOOBLE_API_HOST: z.string().default("br.jooble.org"),
 });
 
 export interface AiConfig {
@@ -33,6 +40,20 @@ export interface AiConfig {
 /** RapidAPI (JSearch). A chave fica só no `.env` local e nunca é registrada. */
 export interface RapidApiConfig {
   key: string;
+  host: string;
+}
+
+/** Adzuna. As credenciais ficam só no `.env` local e nunca são registradas. */
+export interface AdzunaConfig {
+  appId: string;
+  appKey: string;
+  /** Código do país na URL (padrão: `br`). */
+  country: string;
+}
+
+/** Jooble. A chave é específica do domínio do país (ex.: `br.jooble.org`). */
+export interface JoobleConfig {
+  apiKey: string;
   host: string;
 }
 
@@ -56,6 +77,10 @@ export interface AppConfig {
   rapidapi: RapidApiConfig | null;
   /** Host do LinkedIn Jobs (RapidAPI); null quando não configurado. */
   linkedinApiHost: string | null;
+  /** Presente somente quando ADZUNA_APP_ID e ADZUNA_APP_KEY estão configurados. */
+  adzuna: AdzunaConfig | null;
+  /** Presente somente quando JOOBLE_API_KEY está configurada. */
+  jooble: JoobleConfig | null;
 }
 
 /**
@@ -122,6 +147,9 @@ export function loadConfig(
   const databasePath = e.DATABASE_PATH
     ? path.resolve(e.DATABASE_PATH)
     : path.join(dataDir, "jobpilot.sqlite");
+  const adzunaAppId = e.ADZUNA_APP_ID?.trim() ?? "";
+  const adzunaAppKey = e.ADZUNA_APP_KEY?.trim() ?? "";
+  const joobleApiKey = e.JOOBLE_API_KEY?.trim() ?? "";
 
   return {
     port: e.PORT,
@@ -144,5 +172,16 @@ export function loadConfig(
       : null,
     rapidapi: e.RAPIDAPI_KEY ? { key: e.RAPIDAPI_KEY, host: e.RAPIDAPI_HOST } : null,
     linkedinApiHost: e.LINKEDIN_API_HOST?.trim() ? e.LINKEDIN_API_HOST.trim() : null,
+    adzuna:
+      adzunaAppId && adzunaAppKey
+        ? {
+            appId: adzunaAppId,
+            appKey: adzunaAppKey,
+            country: e.ADZUNA_COUNTRY.trim() || "br",
+          }
+        : null,
+    jooble: joobleApiKey
+      ? { apiKey: joobleApiKey, host: e.JOOBLE_API_HOST.trim() || "br.jooble.org" }
+      : null,
   };
 }
