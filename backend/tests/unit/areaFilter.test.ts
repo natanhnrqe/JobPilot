@@ -161,3 +161,41 @@ describe("filtro por área — correspondência", () => {
     );
   });
 });
+
+describe("filtro por área — cargos não-tech no título", () => {
+  it("não aprova administrativo só porque a empresa tem 'Tech' no nome", () => {
+    expect(matchesArea("Administrative Intern – Profit-Tech", "", ["tech"])).toBe(false);
+  });
+
+  it("não aprova marketing só porque a empresa tem 'Tech' no nome", () => {
+    expect(matchesArea("Estagiário de Marketing Digital – Profit-Tech", "", ["tech"])).toBe(false);
+  });
+
+  it("não confunde a estação 'Spring 2027' com o framework", () => {
+    expect(
+      matchesArea("Internship - Law, Policy, and Research - Spring 2027", "", ["spring"]),
+    ).toBe(false);
+  });
+
+  it("não aprova marketing nem customer success com descrição técnica", () => {
+    expect(
+      matchesArea("Graduate Partner Marketing Manager", "Cloud, API e dados.", ["cloud", "api"]),
+    ).toBe(false);
+    expect(
+      matchesArea("Implementation Success Manager - Onboarding Trainee", "APIs e SQL.", ["api"]),
+    ).toBe(false);
+  });
+
+  it("mantém vaga técnica quando o título também cita tecnologia", () => {
+    expect(matchesArea("Estágio em Contabilidade: Dados e IA", "", ["dados"])).toBe(true);
+    expect(matchesArea("Finance Data Analyst Intern", "", ["data"])).toBe(true);
+    expect(matchesArea("Onboarding Engineer", "", ["engineer"])).toBe(true);
+  });
+
+  it("mantém desenvolvimento de software e suporte técnico", () => {
+    expect(matchesArea("Estagiário em Desenvolvimento Web/Mobile", "", ["desenvolvimento"])).toBe(
+      true,
+    );
+    expect(matchesArea("Estágio em Suporte Técnico", "", ["suporte técnico"])).toBe(true);
+  });
+});

@@ -100,6 +100,92 @@ const NON_TECH_DEVELOPMENT_PHRASES: string[][] = [
   ["desenvolvedor", "comercial"],
 ];
 
+/**
+ * Cargos claramente fora de tecnologia. Quando o título tem um destes termos,
+ * a vaga só entra se o próprio título citar um termo técnico forte: o nome da
+ * empresa ("Profit-Tech") ou a estação ("Spring 2027") não bastam.
+ */
+const NON_TECH_TITLE_TERMS = new Set([
+  "administrativo",
+  "administrative",
+  "marketing",
+  "vendas",
+  "sales",
+  "comercial",
+  "recrutamento",
+  "recruitment",
+  "direito",
+  "juridico",
+  "legal",
+  "law",
+  "policy",
+  "contabilidade",
+  "accounting",
+  "financeiro",
+  "finance",
+  "communications",
+  "comunicacao",
+  "publicidade",
+  "onboarding",
+  "success",
+  "sucesso",
+]);
+
+const NON_TECH_TITLE_PHRASES: string[][] = [
+  ["business", "development"],
+  ["talent", "acquisition"],
+  ["customer", "success"],
+  ["sucesso", "do", "cliente"],
+  ["recursos", "humanos"],
+  ["human", "resources"],
+  ["administracao", "de", "empresas"],
+  ["administracao", "de", "rh"],
+];
+
+/**
+ * Termos que confirmam a vaga como técnica no título. A lista exclui "tech",
+ * "desenvolvimento" e "desenvolvedor" de propósito: eles aparecem em nome de
+ * empresa e em cargos comerciais ("desenvolvimento de negócios").
+ */
+const STRONG_TECH_TITLE_TERMS = new Set([
+  "software",
+  "developer",
+  "developers",
+  "engineer",
+  "engineers",
+  "engineering",
+  "engenheiro",
+  "engenharia",
+  "programador",
+  "programmers",
+  "programming",
+  "data",
+  "dados",
+  "analytics",
+  "python",
+  "java",
+  "javascript",
+  "typescript",
+  "react",
+  "node",
+  "sql",
+  "api",
+  "cloud",
+  "aws",
+  "azure",
+  "docker",
+  "devops",
+  "backend",
+  "frontend",
+  "fullstack",
+  "mobile",
+  "android",
+  "ios",
+  "qa",
+  "infraestrutura",
+  "tecnologia",
+]);
+
 /** Remove vazios, normaliza espaços e deduplica sem diferenciar acentos/caixa. */
 export function normalizeAreaKeywords(values: readonly string[]): string[] {
   const seen = new Set<string>();
@@ -139,15 +225,35 @@ export function matchesArea(
     const needle = tokenize(keyword);
     if (needle.length === 0) return false;
 
-    if (
-      matchesTokens(titleTokens, titleCompact, needle) &&
-      !isNonTechTitleMatch(titleTokens, needle)
-    ) {
-      return true;
-    }
-    if (!isDescriptionSafe(needle)) return false;
-    return matchesTokens(descriptionTokens, descriptionCompact, needle);
+    const titleMatch =
+      matchesTokens(titleTokens, titleCompact, needle) && !isNonTechTitleMatch(titleTokens, needle);
+    const descriptionMatch =
+      isDescriptionSafe(needle) && matchesTokens(descriptionTokens, descriptionCompact, needle);
+    if (!titleMatch && !descriptionMatch) return false;
+
+    // Cargo não-tech no título só passa com um termo técnico forte no título.
+    // Sem isso, "Administrative Intern – Profit-Tech" entraria só por "tech" e
+    // "Law, Policy… Spring 2027" entraria pela estação, não pelo framework.
+    if (hasNonTechTitleRole(titleTokens) && !hasStrongTechTitleTerm(titleTokens)) return false;
+
+    return true;
   });
+}
+
+/** Cargo claramente não-tech no título (marketing, direito, administrativo…). */
+function hasNonTechTitleRole(tokens: string[]): boolean {
+  if (tokens.some((token) => NON_TECH_TITLE_TERMS.has(token))) return true;
+  return NON_TECH_TITLE_PHRASES.some((phrase) => containsTokenSequence(tokens, phrase));
+}
+
+/** O título cita uma tecnologia/atribuição técnica que confirma a área. */
+function hasStrongTechTitleTerm(tokens: string[]): boolean {
+  return tokens.some(
+    (token) =>
+      STRONG_TECH_TITLE_TERMS.has(token) ||
+      (token.length > 4 &&
+        [...STRONG_TECH_TITLE_TERMS].some((term) => term.length >= 5 && token.startsWith(term))),
+  );
 }
 
 /** Ignora "desenvolvimento de clientes/negócios/..." no título. */
