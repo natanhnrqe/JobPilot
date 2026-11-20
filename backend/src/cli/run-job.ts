@@ -18,6 +18,7 @@ import { RemotiveConnector } from "../connectors/remotive.js";
 import { RemoteOkConnector } from "../connectors/remoteok.js";
 import { NubeConnector } from "../connectors/nube.js";
 import { GupyConnector } from "../connectors/gupy.js";
+import { HimalayasConnector } from "../connectors/himalayas.js";
 import { JSearchConnector } from "../connectors/rapidapiJsearch.js";
 import { LinkedInJobsConnector } from "../connectors/linkedinJobs.js";
 import type { SourceConnector } from "../connectors/types.js";
@@ -51,6 +52,7 @@ function defaultConnectors(config: AppConfig): SourceConnector[] {
     new RemoteOkConnector(),
     new NubeConnector(),
     new GupyConnector(),
+    new HimalayasConnector(),
   ];
   if (config.rapidapi) {
     connectors.push(
