@@ -24,6 +24,7 @@
 | RapidAPI (LinkedIn Jobs)       | ✅ implementada     | API de terceiro (chave)    | 2026-11-14    |
 | Adzuna                         | ⏳ aguardando chave | API de terceiro (chave)    | 2026-11-19    |
 | Jooble (Brasil)                | ⏳ aguardando chave | API de terceiro (chave)    | 2026-11-19    |
+| Jobicy                         | ❌ não implementada | API pública (GET)          | 2026-11-19    |
 | Arbeitnow                      | ❌ não implementada | API pública (GET)          | 2026-11-03    |
 | Hacker News (Algolia)          | ❌ não implementada | API pública (GET)          | 2026-11-03    |
 
@@ -437,8 +438,6 @@
 
 ### Fontes sem chave (avaliar depois)
 
-- **Jobicy** (`https://jobicy.com/api/jobs`): remoto, sem chave, até 200/página, somente os últimos
-  7 dias; atribuição obrigatória e polling no máximo 1x/hora.
 - **Workable / Recruitee / Teamtailor**: JSON público por empresa, sem chave. Exigem lista de
   empresas; a Recruitee planeja exigir token em 2027. Mesma lógica dos ATS já avaliados.
 - **CIEE / Sólides / Trampos / Programathor**: portais brasileiros com vagas de estágio, mas sem
@@ -452,6 +451,38 @@
 - **Workday:** o endpoint CXS respondeu 429 na validação de 2026-11-16 — precisa de nova
   validação antes de qualquer código.
 - **Catho / Indeed / Glassdoor:** sem API pública; scraping contraria os termos e há CAPTCHA.
+
+## Jobicy — verificada, não implementada (2026-11-19)
+
+- **Por que avaliar:** API pública de vagas remotas, sem chave, com filtro por país e categoria —
+  mesma lógica da Himalayas, mas com foco em outros empregadores.
+- **Acesso:** `GET https://jobicy.com/api/jobs` (o alias `/api/v2/remote-jobs` responde o mesmo).
+  Parâmetros: `count` (1–100), `cursor`, `geo` (slug `brazil`), `industry` (`engineering`,
+  `data-science`…) e `tag` (busca no título e na descrição).
+- **Resposta:** `{ jobCount, nextCursor, hasMore, lastUpdate, jobs: [...] }`; cada vaga traz `id`,
+  `url`, `jobTitle`, `companyName`, `jobIndustry[]`, `jobType[]`, `jobGeo`, `jobLevel`,
+  `jobExcerpt`, `jobDescription` (HTML), `pubDate`, `salaryMin`/`salaryMax`/`salaryCurrency`/
+  `salaryPeriod`.
+- **Janela e paginação:** somente vagas dos **últimos 7 dias**, com atraso de 3 h; ordenadas da mais
+  nova para a mais antiga; cursor válido por 24 h.
+- **Cota:** **1 requisição por segundo por IP**, compartilhada entre feed, taxonomias e status;
+  `429` traz `Retry-After`. A própria documentação pede para evitar agendamentos no minuto 00.
+- **Condições de uso:** creditar a Jobicy e manter o link da listagem; o `url` público aponta para a
+  página da Jobicy. O link direto do ATS só vem no plano comercial (chave + US$ 0,01 por vaga).
+- **Validação real em 2026-11-19:**
+  - `geo=brazil` sem filtro: **100 vagas** (com próxima página), tipos Part-Time 9 / Full-Time 67 /
+    Contract 24; níveis **Senior 53, Director 17, Any 28**, Midweight 1 e Entry-Level/Junior 1 —
+    **nenhum estágio**;
+  - `geo=brazil&tag=intern`: 86 vagas, mas o termo casa com “internal/international” (intérpretes);
+    **0 estágios**;
+  - `geo=brazil&tag=estágio`: **0 resultados**;
+  - `geo=brazil&industry=engineering`: 38 vagas, todas Senior/Director/Any; **0 estágios**;
+  - `geo=brazil&industry=data-science`: 6 vagas; **0 estágios**;
+  - `jobType` só traz Full-Time, Part-Time, Contract e Freelance — não existe “Internship”.
+- **Decisão:** **não implementar agora**. A fonte não entrega estágios no recorte, então não há
+  volume para justificar um conector. Reavaliar se o feed passar a listar estágios ou se o escopo
+  mudar para júnior.
+- **`robots.txt`:** libera `/api/jobs`; bloqueia `/search/` (não usado).
 
 ## Regras que valem para qualquer fonte
 

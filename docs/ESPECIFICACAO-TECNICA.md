@@ -1075,6 +1075,7 @@ Regras (válidas desde o Marco 1):
 | 6.7 ✅ | Conector Gupy (portal da empresa)           | `portal.gupy.io/api/job-search/jobs` validado em 2026-11-16 (Curitiba + remoto); sem chave; 12 testes offline; banco de talentos/aprendiz descartados; envio continua humano |
 | 6.8 ⏸️ | ATS Greenhouse / Lever / Ashby              | endpoints e 13 boards validados em 2026-11-16; **0 estágios de tecnologia** no recorte → adiados; registrar nova avaliação quando houver vaga real |
 | 6.9 ✅ | Conector Himalayas (remoto)                 | `himalayas.app/jobs/api/search` validado em 2026-11-19: 50 estágios abertos para o Brasil (3 páginas), sem chave; 11 vagas tech no recorte; `robots.txt` libera `/jobs`; 13 testes offline; atribuição e `applicationLink` preservados |
+| 6.10 ⏸️ | Jobicy (remoto)                            | API pública validada em 2026-11-19: 100 vagas no Brasil em 7 dias, mas **0 estágios** (níveis Senior/Director/Any; `jobType` sem Internship) → não implementar no recorte atual |
 
 ## 13. Ordem de implementação recomendada e primeiro marco
 
