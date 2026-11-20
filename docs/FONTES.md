@@ -25,6 +25,10 @@
 | Adzuna                         | ⏳ aguardando chave | API de terceiro (chave)    | 2026-11-19    |
 | Jooble (Brasil)                | ⏳ aguardando chave | API de terceiro (chave)    | 2026-11-19    |
 | Jobicy                         | ❌ não implementada | API pública (GET)          | 2026-11-19    |
+| CIEE                           | ❌ bloqueada        | API interna (exige login)  | 2026-11-19    |
+| Trampos                        | ❌ não implementada | listagem client-side       | 2026-11-19    |
+| Programathor                   | ❌ não implementada | HTML público               | 2026-11-19    |
+| Sólides                        | ❌ não aplicável    | não é quadro de vagas      | 2026-11-19    |
 | Arbeitnow                      | ❌ não implementada | API pública (GET)          | 2026-11-03    |
 | Hacker News (Algolia)          | ❌ não implementada | API pública (GET)          | 2026-11-03    |
 
@@ -440,9 +444,6 @@
 
 - **Workable / Recruitee / Teamtailor**: JSON público por empresa, sem chave. Exigem lista de
   empresas; a Recruitee planeja exigir token em 2027. Mesma lógica dos ATS já avaliados.
-- **CIEE / Sólides / Trampos / Programathor**: portais brasileiros com vagas de estágio, mas sem
-  API pública documentada; exigem validação de `robots.txt`/termos e parsing. Não implementar sem
-  essa validação.
 
 ### Descartadas ou bloqueadas
 
@@ -483,6 +484,61 @@
   volume para justificar um conector. Reavaliar se o feed passar a listar estágios ou se o escopo
   mudar para júnior.
 - **`robots.txt`:** libera `/api/jobs`; bloqueia `/search/` (não usado).
+
+## Portais brasileiros — verificados, não implementados (2026-11-19)
+
+Os quatro portais abaixo foram avaliados depois da Jobicy, seguindo a mesma regra: só implementar
+depois de confirmar acesso real e condições de uso. Nenhum passou no recorte (estágio de tecnologia
+em Curitiba ou remoto).
+
+### CIEE — bloqueada por login
+
+- **O que é:** maior agente de integração do Brasil; a “vitrine de vagas” é o quadro público de
+  estágio e jovem aprendiz.
+- **Acesso tentado:** a home expõe a chamada
+  `GET https://api.ciee.org.br/vagas/vitrine-vaga/publicadas?page=0&size=N&sort=codigoVaga,desc`
+  com filtros `tipoVaga`, `codigoMunicipio`, `nivelEnsino`, `idAreaProfissional` e `codigoVaga`.
+- **Resultado real:** a API responde **200 com `totalElements = 0`** para anônimo em todas as
+  variações testadas (sem filtro, `tipoVaga=ESTAGIO`, `codigoMunicipio=4106902`, `nivelEnsino=SU`,
+  `size=300`). Os endpoints auxiliares funcionam: `core/city/search?filter=Curitiba` devolve id
+  `4106902` e `core/professional-area` devolve 73 áreas.
+- **Por que não dá:** a própria página diz “Entre com seu acesso e verifique mais oportunidades na
+  área logada”. A vitrine só entrega vagas para sessão autenticada — automatizar login é vedado
+  pelo projeto.
+- **Decisão:** **bloqueada**. Reavaliar apenas se surgir uma API pública oficial sem login.
+
+### Trampos — listagem client-side, sem API pública
+
+- **`robots.txt`:** libera tudo, exceto `/admin/`; há `sitemap.xml.gz`.
+- **O que foi observado:** `/oportunidades/` responde 200, mas o HTML não traz as vagas — a
+  listagem é montada no cliente (Next/legado com bundle “frodo”). Nenhuma rota de API pública
+  (`/api`, `/graphql`, `/search`) foi encontrada no HTML nem no bundle.
+- **Decisão:** **não implementar**. Sem API pública, exigiria navegador headless para renderizar a
+  lista — o projeto não usa Playwright, e o custo não se justifica.
+
+### Programathor — fora do recorte
+
+- **`robots.txt`:** libera `/jobs`; bloqueia `/admin/`, `/user/`, `/users/` e `/company/`.
+- **Acesso:** listagem **server-rendered** em `/jobs`, com filtro de contrato
+  (`?contract_type=Est%C3%A1gio`) e paginação em `/jobs/page/N`; cada vaga é
+  `/jobs/<id>-<slug>` e traz **JSON-LD `JobPosting`** com título, empresa, local, `datePosted`,
+  `validThrough` e `employmentType: ["INTERN"]`.
+- **Resultado real em 2026-11-19:** `contract_type=Estágio` → **1 vaga** no Brasil
+  (“Desenvolvedor Full-Stack Estágio”, Blueintra, Vinhedo/SP, publicada em 2026-10-22, válida até
+  2026-11-21). `place=Curitiba` → **0**; `remoto=true` → **0**.
+- **Termos:** `/terms` e `/privacy` existem. Os termos vedam usar as informações para fim diverso do
+  objeto do serviço, o que reforça o uso local e não republicado do JobPilot, mas não resolvem o
+  problema de volume.
+- **Decisão:** **não implementar**. A fonte é tecnicamente viável (HTML + JSON-LD, sem login), mas
+  não tem estágio no recorte; registrar nova avaliação se aparecer vaga em Curitiba/remoto.
+
+### Sólides — não é quadro de vagas
+
+- **O que é:** SaaS de RH (recrutamento e seleção). Não mantém uma vitrine pública de vagas de
+  terceiros.
+- **Resultado real:** `https://www.solides.com.br/vagas` responde **404**; o `robots.txt` é de um
+  site WordPress institucional (`Crawl-delay: 10`).
+- **Decisão:** **não aplicável**. Não é fonte de vagas para o JobPilot.
 
 ## Regras que valem para qualquer fonte
 

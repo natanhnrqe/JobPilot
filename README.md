@@ -62,7 +62,7 @@ Aplicação **local** para cadastrar, organizar e acompanhar vagas de emprego e 
 
 **Não implementado** (por design, por enquanto): envio automatizado nos portais (os alvos vedam bots — ver [`docs/PORTAIS.md`](docs/PORTAIS.md)), análise em lote e Playwright.
 
-**Preparado, não implementado:** Adzuna e Jooble, que exigem chave gratuita criada pelo usuário. JSearch e LinkedIn Jobs estão implementados — veja [`docs/RAPIDAPI.md`](docs/RAPIDAPI.md). Os ATS Greenhouse/Lever/Ashby foram validados em 2026-11-16, mas adiados: os 13 boards conferidos não tinham estágio de tecnologia no recorte. A **Jobicy** foi validada em 2026-11-19 e também ficou de fora: 100 vagas no Brasil em 7 dias, mas nenhum estágio (ver [`docs/FONTES.md`](docs/FONTES.md)).
+**Preparado, não implementado:** Adzuna e Jooble, que exigem chave gratuita criada pelo usuário. JSearch e LinkedIn Jobs estão implementados — veja [`docs/RAPIDAPI.md`](docs/RAPIDAPI.md). Os ATS Greenhouse/Lever/Ashby foram validados em 2026-11-16, mas adiados: os 13 boards conferidos não tinham estágio de tecnologia no recorte. A **Jobicy** foi validada em 2026-11-19 e também ficou de fora: 100 vagas no Brasil em 7 dias, mas nenhum estágio. Os portais **CIEE, Trampos, Programathor e Sólides** foram avaliados na mesma data e nenhum entrou: o CIEE só mostra a vitrine para quem faz login, o Trampos não tem API pública, o Programathor tem 1 estágio no Brasil e 0 em Curitiba/remoto, e a Sólides não é quadro de vagas (ver [`docs/FONTES.md`](docs/FONTES.md)).
 
 ## Requisitos
 
